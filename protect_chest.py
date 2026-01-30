@@ -23,27 +23,34 @@ import mediapipe as mp
 from mediapipe.tasks.python import vision
 from mediapipe.tasks import python
 
+# ---- Windows Hardware Configuration ----
+# Centers the Pygame window on the screen
+os.environ["SDL_VIDEO_CENTERED"] = "1"
+# NOTE: "coreaudio" driver removed (Mac specific). Windows auto-detects sound.
+
 # ============================================================
 # 2. CONFIGURATION
 # ============================================================
 # Set the game window dimensions (1400px wide, 950px high)
 WIDTH, HEIGHT = 1400, 950
-# Select the webcam index (1 usually means external USB cam, 0 is built-in)
+# Select the webcam index (1 = External USB, 0 = Built-in)
+# Try changing to 0 if the camera doesn't open.
 CAMERA_INDEX = 1        
 # Set the total match time to 60 seconds
 GAME_TIME = 60          
 
-# Define paths to the AI model files (Must exist in a 'models' folder)
+# Define paths to the AI model files (Must exist in a 'models' folder next to this script)
 MODEL_PATH_HAND = "models/hand_landmarker.task"
 MODEL_PATH_FACE = "models/face_landmarker.task"
 
 # Define file paths for game assets (Images & Audio)
-# NOTE: These are absolute paths. In a real build, relative paths are better.
-CHEST_IMAGE_PATH = "C:\Users\pc\protecttreasure\CHEST_IMAGE_PATH.png"
-THREAT_IMAGE_PATH = "C:\Users\pc\protecttreasure\THREAT_IMAGE_PATH.png"
-BACKGROUND_IMAGE_PATH = "C:\Users\pc\protecttreasure\BACKGROUND_IMAGE_PATH.png"
-BACKGROUND_MUSIC_PATH = "C:\Users\pc\protecttreasure\BACKGROUND_MUSIC_PATH.mp3"
-HIT_SOUND_PATH = "C:\Users\pc\protecttreasure\HIT_SOUND_PATH.wav"
+# [WINDOWS UPDATE] Using 'r' for raw strings to handle backslashes correctly
+CHEST_IMAGE_PATH = r"C:\Users\pc\protecttreasure\CHEST_IMAGE_PATH.png"
+THREAT_IMAGE_PATH = r"C:\Users\pc\protecttreasure\THREAT_IMAGE_PATH.png"
+BACKGROUND_IMAGE_PATH = r"C:\Users\pc\protecttreasure\BACKGROUND_IMAGE_PATH.png"
+BACKGROUND_MUSIC_PATH = r"C:\Users\pc\protecttreasure\BACKGROUND_MUSIC_PATH.mp3"
+HIT_SOUND_PATH = r"C:\Users\pc\protecttreasure\HIT_SOUND_PATH.wav"
+ROAR_SOUND_PATH = r"C:\Users\pc\protecttreasure\ROAR_SOUND_PATH.wav" 
 
 # ============================================================
 # 3. PHYSICS TUNING (THE "FEEL" OF THE GAME)
@@ -145,7 +152,7 @@ pygame.mixer.init()
 # Create the game window surface
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 # Set the window title
-pygame.display.set_caption("Treasure Guard – COMMENTED BUILD")
+pygame.display.set_caption("Treasure Guard – WINDOWS BUILD")
 # Create a clock to manage framerate
 clock = pygame.time.Clock()
 # Create font objects for text rendering
@@ -159,8 +166,16 @@ try:
 except: background_img = None # If file missing, use None
 
 # Load Game Sprites (Chest and Threat)
-chest_img = pygame.transform.smoothscale(pygame.image.load(CHEST_IMAGE_PATH).convert_alpha(), (TREASURE_SIZE, TREASURE_SIZE))
-threat_img = pygame.transform.smoothscale(pygame.image.load(THREAT_IMAGE_PATH).convert_alpha(), (THREAT_SIZE, THREAT_SIZE))
+# Note: You can add error handling here too if images are missing
+try:
+    chest_img = pygame.transform.smoothscale(pygame.image.load(CHEST_IMAGE_PATH).convert_alpha(), (TREASURE_SIZE, TREASURE_SIZE))
+    threat_img = pygame.transform.smoothscale(pygame.image.load(THREAT_IMAGE_PATH).convert_alpha(), (THREAT_SIZE, THREAT_SIZE))
+except:
+    # Fallback to creating colored squares if images fail to load
+    chest_img = pygame.Surface((TREASURE_SIZE, TREASURE_SIZE))
+    chest_img.fill(YELLOW)
+    threat_img = pygame.Surface((THREAT_SIZE, THREAT_SIZE))
+    threat_img.fill(RED)
 
 # Load Background Music
 try: 
@@ -176,12 +191,17 @@ try:
     hit_sound.set_volume(0.9)
 except: pass
 try: 
-    roar_sound = pygame.mixer.Sound
+    roar_sound = pygame.mixer.Sound(ROAR_SOUND_PATH)
     roar_sound.set_volume(1.0)
 except: pass
 
 # Initialize Webcam Feed using OpenCV
-cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_AVFOUNDATION)
+# CAP_DSHOW is often more stable on Windows than default
+cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
+if not cap.isOpened():
+    # Fallback to default if DSHOW fails or Index 1 is wrong
+    cap = cv2.VideoCapture(0)
+
 cap.set(cv2.CAP_PROP_FPS, 60) # Request 60 FPS
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280) # Request HD Width
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720) # Request HD Height
