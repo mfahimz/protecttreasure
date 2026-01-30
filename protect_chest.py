@@ -23,12 +23,6 @@ import mediapipe as mp
 from mediapipe.tasks.python import vision
 from mediapipe.tasks import python
 
-# ---- macOS Hardware Configuration ----
-# Centers the Pygame window on the screen (SDL_VIDEO_CENTERED)
-os.environ["SDL_VIDEO_CENTERED"] = "1"
-# Forces macOS to use the coreaudio driver to prevent sound lag
-os.environ["SDL_AUDIODRIVER"] = "coreaudio"
-
 # ============================================================
 # 2. CONFIGURATION
 # ============================================================
@@ -45,12 +39,11 @@ MODEL_PATH_FACE = "models/face_landmarker.task"
 
 # Define file paths for game assets (Images & Audio)
 # NOTE: These are absolute paths. In a real build, relative paths are better.
-CHEST_IMAGE_PATH = "/Users/fahim/Desktop/Landmark_detection/CHEST_IMAGE_PATH.png"
-THREAT_IMAGE_PATH = "/Users/fahim/Desktop/Landmark_detection/THREAT_IMAGE_PATH.png"
-BACKGROUND_IMAGE_PATH = "/Users/fahim/Desktop/Landmark_detection/BACKGROUND_IMAGE_PATH.png"
-BACKGROUND_MUSIC_PATH = "/Users/fahim/Desktop/Landmark_detection/BACKGROUND_MUSIC_PATH.mp3"
-HIT_SOUND_PATH = "/Users/fahim/Desktop/Landmark_detection/HIT_SOUND_PATH.wav"
-ROAR_SOUND_PATH = "/Users/fahim/Desktop/Landmark_detection/ROAR_SOUND_PATH.wav"
+CHEST_IMAGE_PATH = "C:\Users\pc\protecttreasure\CHEST_IMAGE_PATH.png"
+THREAT_IMAGE_PATH = "C:\Users\pc\protecttreasure\THREAT_IMAGE_PATH.png"
+BACKGROUND_IMAGE_PATH = "C:\Users\pc\protecttreasure\BACKGROUND_IMAGE_PATH.png"
+BACKGROUND_MUSIC_PATH = "C:\Users\pc\protecttreasure\BACKGROUND_MUSIC_PATH.mp3"
+HIT_SOUND_PATH = "C:\Users\pc\protecttreasure\HIT_SOUND_PATH.wav"
 
 # ============================================================
 # 3. PHYSICS TUNING (THE "FEEL" OF THE GAME)
@@ -183,7 +176,7 @@ try:
     hit_sound.set_volume(0.9)
 except: pass
 try: 
-    roar_sound = pygame.mixer.Sound(ROAR_SOUND_PATH)
+    roar_sound = pygame.mixer.Sound
     roar_sound.set_volume(1.0)
 except: pass
 
