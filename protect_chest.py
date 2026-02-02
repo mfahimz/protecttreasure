@@ -128,15 +128,6 @@ options_hand = vision.HandLandmarkerOptions(
 # Create the Hand Landmarker instance
 landmarker_hand = vision.HandLandmarker.create_from_options(options_hand)
 
-# Configure MediaPipe Face Tracking
-options_face = vision.FaceLandmarkerOptions(
-    base_options=python.BaseOptions(model_asset_path=MODEL_PATH_FACE),
-    running_mode=vision.RunningMode.VIDEO,
-    num_faces=1 # Track only 1 face (usually the Protector)
-)
-# Create the Face Landmarker instance
-landmarker_face = vision.FaceLandmarker.create_from_options(options_face)
-
 # Initialize Pygame
 pygame.init()
 # Initialize the Pygame audio mixer
@@ -260,12 +251,6 @@ def get_grip_value(lm):
     avg_dist = sum(math.dist((palm.x, palm.y), (lm[i].x, lm[i].y)) for i in tips)
     return avg_dist / 4.0 # Normalize
 
-def is_mouth_open(face_landmarks):
-    """Detects if mouth is wide open for the Roar mechanic."""
-    upper = face_landmarks[13] # Upper lip point
-    lower = face_landmarks[14] # Lower lip point
-    # Check vertical distance
-    return math.dist((upper.x, upper.y), (lower.x, lower.y)) > MOUTH_OPEN_THRESHOLD
 
 def spawn_threat():
     """Spawns a static threat in the Attacker's zone (Right Side)."""
@@ -366,9 +351,6 @@ try:
         
         # Run Hand Tracking Model
         res_hand = landmarker_hand.detect_for_video(mp_image, timestamp)
-        # Run Face Tracking Model
-        res_face = landmarker_face.detect_for_video(mp_image, timestamp)
-
         # Variables to store raw hand positions
         raw_p_pos, raw_a_pos = None, None
         
@@ -404,16 +386,6 @@ try:
         # If Protector is holding chest and tracking is lost, assume they are still holding it (Prevent dropping)
         if p_tracking_lost and state == "GRABBED": p_grip = 0.0
         
-        # Check Face for Roar Mechanic
-        if res_face.face_landmarks and not game_over and grab_start_time:
-            # Check Cooldown
-            if (current_time - last_roar_time) > ROAR_COOLDOWN:
-                # Check if Mouth is Open
-                if is_mouth_open(res_face.face_landmarks[0]):
-                    # Trigger Roar
-                    last_roar_time = current_time; roar_active = True; roar_radius = 50
-                    if roar_sound: roar_sound.play()
-                    message_text = "SONIC ROAR!"; message_time = current_time
 
         # --- 9. GAME LOGIC ---
         if not game_over:
