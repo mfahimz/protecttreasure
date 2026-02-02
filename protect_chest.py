@@ -26,7 +26,6 @@ from mediapipe.tasks import python
 # ---- Windows Hardware Configuration ----
 # Centers the Pygame window on the screen
 os.environ["SDL_VIDEO_CENTERED"] = "1"
-# NOTE: "coreaudio" driver removed (Mac specific). Windows auto-detects sound.
 
 # ============================================================
 # 2. CONFIGURATION
