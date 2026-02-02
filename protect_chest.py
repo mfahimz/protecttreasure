@@ -40,7 +40,6 @@ GAME_TIME = 60
 
 # Define paths to the AI model files (Must exist in a 'models' folder next to this script)
 MODEL_PATH_HAND = "models/hand_landmarker.task"
-MODEL_PATH_FACE = "models/face_landmarker.task"
 
 # Define file paths for game assets (Images & Audio)
 # [WINDOWS UPDATE] Using 'r' for raw strings to handle backslashes correctly
@@ -96,13 +95,7 @@ A_DROP_THRESH = 0.32
 # If the hand velocity exceeds 60.0, trigger a throw automatically.
 FLING_SPEED_TRIGGER = 60.0 
 # When a bullet is grabbed, lock it for 0.2s so it isn't thrown instantly by mistake.
-GRAB_LOCK_TIME = 0.2
-
-# --- FACE LOGIC (Sonic Roar) ---
-# Distance between upper and lower lip to register an "Open Mouth".
-MOUTH_OPEN_THRESHOLD = 0.05 
-# Seconds the player must wait between using the Roar ability.
-ROAR_COOLDOWN = 15.0        
+GRAB_LOCK_TIME = 0.2      
 
 # Difficulty Scaling
 # Chance (0.0 to 1.0) of a new threat spawning per frame.
