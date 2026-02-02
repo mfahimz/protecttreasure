@@ -563,13 +563,6 @@ try:
         else: rem = GAME_TIME
         screen.blit(font.render(f"Time: {rem}s", True, WHITE), (20, 60))
 
-        # Render Roar Cooldown Bar
-        cooldown_pct = min(1.0, (current_time - last_roar_time) / ROAR_COOLDOWN)
-        bar_col = BLUE if cooldown_pct >= 1.0 else (50, 50, 100)
-        pygame.draw.rect(screen, bar_col, (WIDTH//2 - 150, 20, int(300 * cooldown_pct), 20))
-        pygame.draw.rect(screen, WHITE, (WIDTH//2 - 150, 20, 300, 20), 2)
-        screen.blit(font.render("SONIC ROAR", True, WHITE), (WIDTH//2 - 60, 22))
-
         # Render Messages
         if message_text and time.time() - message_time < 1.0:
             txt = big_font.render(message_text, True, YELLOW)
