@@ -1,4 +1,3 @@
-# ============================================================
 # 1. IMPORTS & SETUP
 # ============================================================
 # Import OS for file paths and environment variables
@@ -26,6 +25,7 @@ from mediapipe.tasks import python
 # ---- Windows Hardware Configuration ----
 # Centers the Pygame window on the screen
 os.environ["SDL_VIDEO_CENTERED"] = "1"
+# NOTE: "coreaudio" driver removed (Mac specific). Windows auto-detects sound.
 
 # ============================================================
 # 2. CONFIGURATION
@@ -40,6 +40,7 @@ GAME_TIME = 60
 
 # Define paths to the AI model files (Must exist in a 'models' folder next to this script)
 MODEL_PATH_HAND = "models/hand_landmarker.task"
+MODEL_PATH_FACE = "models/face_landmarker.task"
 
 # Define file paths for game assets (Images & Audio)
 # [WINDOWS UPDATE] Using 'r' for raw strings to handle backslashes correctly
@@ -95,7 +96,13 @@ A_DROP_THRESH = 0.32
 # If the hand velocity exceeds 60.0, trigger a throw automatically.
 FLING_SPEED_TRIGGER = 60.0 
 # When a bullet is grabbed, lock it for 0.2s so it isn't thrown instantly by mistake.
-GRAB_LOCK_TIME = 0.2      
+GRAB_LOCK_TIME = 0.2
+
+# --- FACE LOGIC (Sonic Roar) ---
+# Distance between upper and lower lip to register an "Open Mouth".
+MOUTH_OPEN_THRESHOLD = 0.05 
+# Seconds the player must wait between using the Roar ability.
+ROAR_COOLDOWN = 15.0        
 
 # Difficulty Scaling
 # Chance (0.0 to 1.0) of a new threat spawning per frame.
@@ -251,7 +258,6 @@ def get_grip_value(lm):
     avg_dist = sum(math.dist((palm.x, palm.y), (lm[i].x, lm[i].y)) for i in tips)
     return avg_dist / 4.0 # Normalize
 
-
 def spawn_threat():
     """Spawns a static threat in the Attacker's zone (Right Side)."""
     # Random X in right half, Random Y within vertical bounds
@@ -385,7 +391,7 @@ try:
 
         # If Protector is holding chest and tracking is lost, assume they are still holding it (Prevent dropping)
         if p_tracking_lost and state == "GRABBED": p_grip = 0.0
-        
+    
 
         # --- 9. GAME LOGIC ---
         if not game_over:
