@@ -34,9 +34,9 @@ os.environ["SDL_AUDIODRIVER"] = "coreaudio"
 # 2. CONFIGURATION
 # ============================================================
 # Set the width of the game window in pixels.
-WIDTH = 1400 
+WIDTH = 1500
 # Set the height of the game window in pixels.
-HEIGHT = 950
+HEIGHT = 955
 # Select the camera input index.
 # 0 is usually the built-in FaceTime Camera on Mac. 
 # 1 is usually an external USB camera.
@@ -50,11 +50,9 @@ MODEL_PATH_HAND = "models/hand_landmarker.task"
 MODEL_PATH_FACE = "models/face_landmarker.task"
 
 # Define file paths for visual and audio assets.
-# [MAC UPDATE] Using standard Unix paths with forward slashes.
-# Ensure your username is correct (replaced 'pc' with 'fahim' based on previous context).
 CHEST_IMAGE_PATH = "/Users/fahim/Desktop/Landmark_detection/CHEST_IMAGE_PATH.png"
 THREAT_IMAGE_PATH = "/Users/fahim/Desktop/Landmark_detection/THREAT_IMAGE_PATH.png"
-BACKGROUND_IMAGE_PATH = "/Users/fahim/Desktop/Landmark_detection/BACKGROUND_IMAGE_PATH.png"
+BACKGROUND_IMAGE_PATH = "/Users/fahim/Desktop/Landmark_detection/BACKGROUND_IMAGE_PATH.jpeg"
 BACKGROUND_MUSIC_PATH = "/Users/fahim/Desktop/Landmark_detection/BACKGROUND_MUSIC_PATH.mp3"
 HIT_SOUND_PATH = "/Users/fahim/Desktop/Landmark_detection/HIT_SOUND_PATH.wav"
 ROAR_SOUND_PATH = "/Users/fahim/Desktop/Landmark_detection/ROAR_SOUND_PATH.wav"
@@ -88,23 +86,23 @@ P_DROP_THRESH = 0.45
 GRACE_PERIOD_DURATION = 1.0 
 
 # --- ATTACKER PHYSICS (Offense) ---
-# The Attacker must place their hand very close (60px) to a bullet to grab it.
-ATTACKER_GRAB_RANGE = 60  
+# The Attacker must place their hand VERY close (40px) to a bullet to grab it.
+ATTACKER_GRAB_RANGE = 40  
 # The speed at which the bullet travels when thrown.
-THROW_SPEED = 30.0        
+THROW_SPEED = 50.0        
 
 # Agile Grip Settings for Attacker:
 # Grab threshold is the same as protector.
 A_GRAB_THRESH = 0.22
-# Drop threshold is lower (0.32), making it easier/faster to release/throw items.
-A_DROP_THRESH = 0.32      
+# Drop threshold is higher (0.45), making it harder to accidentally release items.
+A_DROP_THRESH = 0.25      
 
 # Fling Mechanics:
-# If the hand moves faster than 60.0 pixels/frame, the code assumes a "Throw" action.
-FLING_SPEED_TRIGGER = 60.0 
-# When a bullet is grabbed, it is locked to the hand for 0.2s.
+# If the hand moves faster than 80.0 pixels/frame, the code assumes a "Throw" action.
+FLING_SPEED_TRIGGER = 80.0 
+# When a bullet is grabbed, it is locked to the hand for 0.5s.
 # This prevents the physics engine from throwing it instantly if the hand is moving fast.
-GRAB_LOCK_TIME = 0.2
+GRAB_LOCK_TIME = 0.5
 
 # --- FACE LOGIC (Sonic Roar) ---
 # The vertical distance required between upper/lower lips to register "Open Mouth".
@@ -306,8 +304,13 @@ def spawn_threat():
     """
     # Pick a random X coordinate on the right side (60% to edge).
     x = random.randint(int(WIDTH * 0.6), WIDTH - 80)
-    # Pick a random Y coordinate within screen bounds.
-    y = random.randint(80, HEIGHT - 80)
+    
+    # [FIX] ALIGNED SPAWNING:
+    # Instead of spawning anywhere vertically, spawn in a "lane" aligned with the chest.
+    # This ensures that when thrown horizontally, it naturally goes towards the chest.
+    # Chest is at HEIGHT // 2. We allow small variance (+/- 50px).
+    y = random.randint(HEIGHT // 2 - 50, HEIGHT // 2 + 50)
+    
     pos = np.array([x, y], dtype=float)
     
     # Return dictionary with physics properties.
@@ -560,16 +563,11 @@ try:
                         if not is_locked and (a_grip > A_DROP_THRESH or hand_speed > FLING_SPEED_TRIGGER): 
                             t["state"] = "FIRED"
                             
-                            # Calculate Throw Vector
-                            if hand_speed > 5.0:
-                                # Fling in direction of hand movement.
-                                aim_dir = a_velocity / hand_speed 
-                            else:
-                                # If static release, auto-aim at chest.
-                                aim_dir = treasure_pos - t["pos"]
-                                aim_dir /= np.linalg.norm(aim_dir)
+                            # [FIX] FORCE STRAIGHT LINE TRAJECTORY
+                            # Instead of calculating diagonal vectors, we force a hard Horizontal Left throw.
+                            # This guarantees "Straight Line" behavior.
+                            t["vel"] = np.array([-1.0, 0.0]) * THROW_SPEED
                             
-                            t["vel"] = aim_dir * THROW_SPEED
                             held_threat_id = None
                         else:
                             # If still holding, glue threat position to hand.
@@ -620,7 +618,7 @@ try:
         
         # Draw Chest Outline.
         pygame.draw.circle(screen, color, treasure_pos.astype(int), BASE_BORDER_RADIUS, 4)
-        # Draw Chest Sprite.
+        # Draw Chest Image.
         screen.blit(chest_img, (int(treasure_pos[0]-45), int(treasure_pos[1]-45)))
 
         # Draw all Threats.
@@ -636,7 +634,8 @@ try:
             # If held, draw aiming line for visual feedback.
             if t["state"] == "HELD":
                 pygame.draw.circle(screen, MAGENTA, t["pos"].astype(int), 35, 3)
-                pygame.draw.line(screen, MAGENTA, t["pos"], t["pos"] + (a_velocity * 10), 3)
+                # Show horizontal aim line
+                pygame.draw.line(screen, MAGENTA, t["pos"], t["pos"] + np.array([-100, 0]), 3)
 
         # Draw Protector Cursor.
         if not p_tracking_lost:
@@ -699,6 +698,6 @@ try:
         pygame.display.flip()
 
 # Handle Keyboard Interrupt (Ctrl+C) to exit cleanly.
-except KeyboardInterrupt:
+except KeyboardInterrupt: 
     cap.release()
     pygame.quit()
