@@ -10,9 +10,14 @@ from mediapipe.tasks import python
 os.environ["SDL_VIDEO_CENTERED"] = "1"
 
 # ============================================================
-# 2. CONFIGURATION
+# 2. CONFIGURATION & AUTO-SCALING
 # ============================================================
-WIDTH, HEIGHT = 1400, 950
+pygame.init()
+# Get monitor information for adaptive window sizing
+screen_info = pygame.display.Info()
+WIDTH = screen_info.current_w
+HEIGHT = screen_info.current_h
+
 CAMERA_INDEX = 1        
 GAME_TIME = 60          
 MODEL_PATH_HAND = "models/hand_landmarker.task"
@@ -36,21 +41,14 @@ MAX_LIVES = 3
 HIT_FLASH_DURATION = 0.4  
 SHAKE_INTENSITY = 12      
 
-# Normalized Thresholds - [STABILITY RE-TUNED]
-P_GRAB_THRESH = 1.3
-P_DROP_THRESH = 1.9
-A_GRAB_THRESH = 1.15    
-A_DROP_THRESH = 1.85    # [FIX] Lowered to detect open hand much easier
-
-# Consensus logic: Hand must be open for 2 frames to fire (faster response)
+P_GRAB_THRESH = 1.3; P_DROP_THRESH = 1.9
+A_GRAB_THRESH = 1.15; A_DROP_THRESH = 1.85    
 RELEASE_BUFFER_MAX = 2
-
 MOVE_SMOOTHING = 0.15
 THROW_SPEED = 55.0
-FLING_SPEED_TRIGGER = 110.0 # [FIX] Increased so pulling hand back doesn't auto-fire
+FLING_SPEED_TRIGGER = 110.0 
 GRAB_LOCK_TIME = 0.3 
 
-# Colors
 WHITE = (255, 255, 255); RED = (220, 60, 60); GREEN = (80, 220, 120)
 YELLOW = (255, 200, 100); BLUE = (100, 200, 255); CYAN = (80, 200, 255)
 MAGENTA = (220, 80, 220)
@@ -67,9 +65,10 @@ options_hand = vision.HandLandmarkerOptions(
 )
 landmarker_hand = vision.HandLandmarker.create_from_options(options_hand)
 
-pygame.init(); pygame.mixer.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Treasure Guard – Precision Attacker Build")
+pygame.mixer.init()
+# Adaptive screen mode (Fullscreen-like borderless window)
+screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.NOFRAME)
+pygame.display.set_caption("Treasure Guard – Debug & Auto-Scale Build")
 clock = pygame.time.Clock()
 font = pygame.font.SysFont(None, 35); big_font = pygame.font.Font(None, 100)
 
@@ -187,7 +186,7 @@ try:
             if grab_start_time and len(threats) < 6 and random.random() < 0.04: 
                 threats.append(spawn_threat())
 
-            # --- PROTECTOR ---
+            # Protector Logic
             is_p_holding = (chest_state == "IDLE" and p_grip < P_GRAB_THRESH) or (chest_state == "GRABBED" and p_grip < P_DROP_THRESH)
             if chest_state == "IDLE" and is_p_holding and not p_tracking_lost:
                 if np.linalg.norm(p_hand_smooth - treasure_pos) < BASE_GRAB_RADIUS:
@@ -198,7 +197,7 @@ try:
                     treasure_pos += (p_hand_smooth - treasure_pos) * MOVE_SMOOTHING
                 else: chest_state = "IDLE"
 
-            # --- ATTACKER ---
+            # Attacker Logic
             if held_threat_id is None and not a_tracking_lost and a_grip < A_GRAB_THRESH: 
                 target = next((t for t in threats if t["state"] == "IDLE" and math.dist(a_hand_smooth, t["pos"]) < 150), None)
                 if target:
@@ -210,13 +209,11 @@ try:
                     t["pos"] = a_hand_smooth.copy() 
                     if (current_time - held_start_time) > GRAB_LOCK_TIME:
                         speed = np.linalg.norm(a_velocity)
-                        # [STABILITY FIX] Priority given to hand opening
                         if (a_grip > A_DROP_THRESH or speed > FLING_SPEED_TRIGGER) and not a_tracking_lost:
                             a_release_counter += 1
                             if a_release_counter >= RELEASE_BUFFER_MAX:
                                 t["state"] = "FIRED"; t["vel"] = np.array([-1.0, 0.0]) * THROW_SPEED; held_threat_id = None
                         else: a_release_counter = max(0, a_release_counter - 1)
-                
                 elif t["state"] == "FIRED":
                     t["pos"] += t["vel"]; t["angle"] = math.degrees(math.atan2(-t["vel"][1], t["vel"][0]))
                 
@@ -229,16 +226,22 @@ try:
             if grab_start_time and (current_time - grab_start_time) >= GAME_TIME:
                 game_over = True; win = True
 
-        # --- RENDER ---
+        # --- DEBUG CAMERA VIEW ---
+        # Resize OpenCV frame for debug view (small overlay top-right)
+        debug_w, debug_h = 320, 180
+        debug_frame = cv2.resize(frame, (debug_w, debug_h))
+        debug_frame = cv2.cvtColor(debug_frame, cv2.COLOR_BGR2RGB)
+        debug_surf = pygame.surfarray.make_surface(debug_frame.swapaxes(0, 1))
+        screen.blit(debug_surf, (WIDTH - debug_w - 20, 20))
+        pygame.draw.rect(screen, CYAN, (WIDTH - debug_w - 20, 20, debug_w, debug_h), 2)
+
+        # --- RENDER GAME ASSETS ---
         display_pos = treasure_pos.copy()
-        is_hit = (current_time - hit_anim_timer) < HIT_FLASH_DURATION
-        if is_hit:
-            display_pos += np.array([random.randint(-SHAKE_INTENSITY, SHAKE_INTENSITY), 
-                                     random.randint(-SHAKE_INTENSITY, SHAKE_INTENSITY)])
+        if (current_time - hit_anim_timer) < HIT_FLASH_DURATION:
+            display_pos += np.array([random.randint(-SHAKE_INTENSITY, SHAKE_INTENSITY), random.randint(-SHAKE_INTENSITY, SHAKE_INTENSITY)])
             screen.blit(font.render("HIT!", True, RED), (int(treasure_pos[0]-25), int(treasure_pos[1]-80)))
             chest_color = RED
-        else:
-            chest_color = GREEN if grab_start_time else YELLOW
+        else: chest_color = GREEN if grab_start_time else YELLOW
 
         pygame.draw.circle(screen, chest_color, display_pos.astype(int), BASE_BORDER_RADIUS, 4)
         screen.blit(chest_img, (int(display_pos[0]-45), int(display_pos[1]-45)))
