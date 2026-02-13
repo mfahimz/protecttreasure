@@ -6,52 +6,24 @@ from mediapipe.tasks import python
 
 os.environ["SDL_VIDEO_CENTERED"] = "1"
 
-print("=" * 70)
-print("               TREASURE GUARD - Enhanced Edition")
-print("=" * 70)
-print("\n[INFO] AUTOMATIC SETUP - No user input required")
-print("[INFO] System will auto-detect and configure:")
-print("       • Best available display (prefers extended screens)")
-print("       • Best camera (prefers external USB cameras)")
-print("       • Optimal resolution for detected display")
-print("\n[INFO] GAMEPLAY CONTROLS:")
-print("       • Left hand (Protector): Close fist to grab treasure")
-print("       • Right hand (Attacker): Grab and throw threats")
-print("\n[INFO] KEYBOARD SHORTCUTS:")
-print("       • F - Toggle fullscreen")
-print("       • C - Toggle camera debug view")
-print("       • ESC - Quit game")
-print("       • SPACE - Restart (after game over)")
-print("\n[INFO] Camera debug feed will appear in top-right corner")
-print("=" * 70)
+print("TREASURE GUARD - Enhanced Edition")
+print("Initializing...")
 
 pygame.init()
 
 def auto_select_display():
     num_displays = pygame.display.get_num_displays()
-    print(f"\n[DEBUG] Display Detection:")
-    print(f"[DEBUG] Found {num_displays} display(s)")
     
     if num_displays > 1:
-        for i in range(num_displays):
-            try:
-                bounds = pygame.display.get_desktop_sizes()[i]
-                print(f"[DEBUG] Display {i}: {bounds[0]}x{bounds[1]}")
-            except:
-                print(f"[DEBUG] Display {i}: Available (resolution unknown)")
-        
         selected = 1
-        print(f"[INFO] Multiple displays detected - Auto-selecting Display {selected} (extended screen)")
+        print(f"Display: {selected} (extended screen)")
     else:
-        info = pygame.display.Info()
-        print(f"[DEBUG] Display 0: {info.current_w}x{info.current_h}")
-        print(f"[INFO] Single display detected - Using Display 0")
         selected = 0
+        print(f"Display: {selected}")
     
     return selected
 
 def auto_select_camera():
-    print(f"\n[DEBUG] Camera Detection:")
     available_cameras = []
     
     for i in range(4):
@@ -62,30 +34,22 @@ def auto_select_camera():
                 h, w = frame.shape[:2]
                 resolution = w * h
                 available_cameras.append((i, w, h, resolution))
-                print(f"[DEBUG] Camera {i}: {w}x{h} ({resolution} pixels)")
-            else:
-                print(f"[DEBUG] Camera {i}: Opened but no signal")
             cap.release()
     
     if not available_cameras:
-        print("[WARNING] No cameras detected - Defaulting to Camera 0")
-        print("[WARNING] If this fails, check USB connections and camera permissions")
         return 0
     
     available_cameras.sort(key=lambda x: x[3], reverse=True)
     selected = available_cameras[0][0]
-    selected_res = f"{available_cameras[0][1]}x{available_cameras[0][2]}"
     
     if len(available_cameras) > 1:
         best_res = available_cameras[0][3]
         for cam in available_cameras[1:]:
             if cam[0] > 0 and cam[3] >= (best_res * 0.8):
                 selected = cam[0]
-                selected_res = f"{cam[1]}x{cam[2]}"
-                print(f"[INFO] External USB camera detected - Preferring Camera {selected}")
                 break
     
-    print(f"[INFO] Auto-selected Camera {selected} ({selected_res})")
+    print(f"Camera: {selected}")
     return selected
 
 USE_FULLSCREEN = True
@@ -94,29 +58,22 @@ DISPLAY_INDEX = auto_select_display()
 try:
     if DISPLAY_INDEX < len(pygame.display.get_desktop_sizes()):
         WIDTH, HEIGHT = pygame.display.get_desktop_sizes()[DISPLAY_INDEX]
-        print(f"[DEBUG] Using native resolution: {WIDTH}x{HEIGHT}")
     else:
         WIDTH, HEIGHT = 1920, 1080
-        print(f"[DEBUG] Defaulting to Full HD: {WIDTH}x{HEIGHT}")
 except:
     WIDTH, HEIGHT = 1920, 1080
-    print(f"[DEBUG] Error detecting resolution - Using Full HD: {WIDTH}x{HEIGHT}")
 
-print(f"\n[DEBUG] Window Initialization:")
 if USE_FULLSCREEN:
     try:
         screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN, display=DISPLAY_INDEX)
         WIDTH, HEIGHT = screen.get_size()
-        print(f"[INFO] ✓ Fullscreen mode: {WIDTH}x{HEIGHT} on Display {DISPLAY_INDEX}")
+        print(f"Resolution: {WIDTH}x{HEIGHT}")
     except Exception as e:
-        print(f"[WARNING] Fullscreen failed: {e}")
-        print(f"[INFO] Falling back to windowed mode...")
         screen = pygame.display.set_mode((1920, 1080))
         WIDTH, HEIGHT = 1920, 1080
         USE_FULLSCREEN = False
 else:
     screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
-    print(f"[INFO] ✓ Windowed mode: {WIDTH}x{HEIGHT}")
 
 pygame.display.set_caption("Treasure Guard - Enhanced Edition")
 
@@ -126,11 +83,11 @@ DEBUG_WINDOW_SIZE = (320, 180)
 GAME_TIME = 60
 MODEL_PATH_HAND = "models/hand_landmarker.task"
 
-CHEST_IMAGE_PATH = r"C:\Users\pc\protecttreasure\CHEST_IMAGE_PATH.png"
-THREAT_IMAGE_PATH = r"C:\Users\pc\protecttreasure\THREAT_IMAGE_PATH.png"
-BACKGROUND_IMAGE_PATH = r"C:\Users\pc\protecttreasure\BACKGROUND_IMAGE_PATH.png"
-BACKGROUND_MUSIC_PATH = r"C:\Users\pc\protecttreasure\BACKGROUND_MUSIC_PATH.mp3"
-HIT_SOUND_PATH = r"C:\Users\pc\protecttreasure\HIT_SOUND_PATH.wav"
+CHEST_IMAGE_PATH = "CHEST_IMAGE_PATH.png"
+THREAT_IMAGE_PATH = "THREAT_IMAGE_PATH.png"
+BACKGROUND_IMAGE_PATH = "BACKGROUND_IMAGE_PATH.jpeg"
+BACKGROUND_MUSIC_PATH = "BACKGROUND_MUSIC_PATH.mp3"
+HIT_SOUND_PATH = "HIT_SOUND_PATH.wav"
 
 TREASURE_SIZE, THREAT_SIZE = 90, 60
 BASE_BORDER_RADIUS, BASE_GRAB_RADIUS = 70, 180
@@ -213,65 +170,37 @@ background_img = None
 try:
     bg_temp = pygame.image.load(BACKGROUND_IMAGE_PATH).convert()
     background_img = bg_temp
-    print(f"[DEBUG] Background image loaded successfully")
 except Exception as e:
-    print(f"[WARNING] Could not load background image: {e}")
-    print(f"[INFO] Game will use solid color background instead")
+    print(f"Warning: Background image not loaded")
 
 try:
     pygame.mixer.music.load(BACKGROUND_MUSIC_PATH)
     pygame.mixer.music.set_volume(0.3)
     pygame.mixer.music.play(-1)
-except Exception as e:
-    print(f"[WARNING] Could not load background music: {e}")
-
-print(f"\n[DEBUG] Camera Initialization:")
-print(f"[INFO] Attempting to open Camera {CAMERA_INDEX}...")
+except:
+    pass
 
 cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
 if not cap.isOpened():
-    print(f"[WARNING] Camera {CAMERA_INDEX} failed to open with CAP_DSHOW")
-    print(f"[INFO] Trying Camera {CAMERA_INDEX} without CAP_DSHOW...")
     cap = cv2.VideoCapture(CAMERA_INDEX)
 
 if not cap.isOpened():
-    print(f"[WARNING] Camera {CAMERA_INDEX} still failed to open")
-    print(f"[INFO] Falling back to default Camera 0...")
     cap = cv2.VideoCapture(0)
     CAMERA_INDEX = 0
 
 if cap.isOpened():
     ret, test_frame = cap.read()
     if ret:
-        h, w = test_frame.shape[:2]
-        print(f"[INFO] ✓ Camera {CAMERA_INDEX} opened successfully ({w}x{h})")
+        print("Camera ready")
     else:
-        print(f"[WARNING] Camera {CAMERA_INDEX} opened but no video signal")
+        print("Warning: Camera signal weak")
 else:
-    print("[ERROR] ❌ No camera available! Game cannot start.")
-    print("[ERROR] Please check:")
-    print("[ERROR]   1. Camera is connected via USB")
-    print("[ERROR]   2. Camera permissions enabled in Windows Settings")
-    print("[ERROR]   3. No other app is using the camera")
+    print("ERROR: No camera detected!")
     pygame.quit()
     sys.exit(1)
 
 start_time_ref = time.time()
-print(f"\n[INFO] ═══════════════════════════════════════════════════")
-print(f"[INFO] Game initialization complete - Starting game loop...")
-print(f"[INFO] ═══════════════════════════════════════════════════")
-print(f"[INFO] ")
-print(f"[INFO] WHAT YOU SHOULD SEE:")
-print(f"[INFO] • Main game window at {WIDTH}x{HEIGHT}")
-if background_img:
-    print(f"[INFO] • Background image loaded and scaled")
-else:
-    print(f"[INFO] • Dark blue background (no image file)")
-print(f"[INFO] • Camera feed in TOP-RIGHT corner")
-print(f"[INFO] • Yellow chest in center (grab to start)")
-print(f"[INFO] • Press C to toggle camera view ON/OFF")
-print(f"[INFO] ")
-print(f"[INFO] ═══════════════════════════════════════════════════\n")
+print("Starting game...\n")
 
 treasure_pos = np.array([WIDTH // 4, HEIGHT // 2], dtype=float)
 p_hand_smooth = np.array([WIDTH // 4, HEIGHT // 2], dtype=float)
@@ -480,17 +409,14 @@ def toggle_fullscreen():
     if USE_FULLSCREEN:
         screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         WIDTH, HEIGHT = screen.get_size()
-        print(f"[INFO] Fullscreen enabled: {WIDTH}x{HEIGHT}")
     else:
         screen = pygame.display.set_mode((1920, 1080), pygame.RESIZABLE)
         WIDTH, HEIGHT = 1920, 1080
-        print(f"[INFO] Windowed mode enabled: {WIDTH}x{HEIGHT}")
     scaled_background = get_scaled_background()
 
 def toggle_camera_debug():
     global SHOW_CAMERA_DEBUG
     SHOW_CAMERA_DEBUG = not SHOW_CAMERA_DEBUG
-    print(f"[INFO] Camera debug view: {'ON' if SHOW_CAMERA_DEBUG else 'OFF'}")
 
 try:
     running = True
@@ -499,16 +425,9 @@ try:
         current_time = time.time()
         frame_count += 1
         
-        if current_time - last_debug_time >= 5.0:
-            print(f"[DEBUG] Game running - Frame: {frame_count}, FPS: {clock.get_fps():.1f}, "
-                  f"Lives: {lives}, Score: {score}, Threats: {len(threats)}")
-            last_debug_time = current_time
-        
         ret, frame = cap.read()
         if not ret:
-            print(f"[WARNING] Camera frame read failed at frame {frame_count}")
             if frame_count % 30 == 0:
-                print(f"[INFO] Attempting to reconnect camera...")
                 cap.release()
                 cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
             continue
@@ -522,16 +441,14 @@ try:
             l = clahe.apply(l)
             limg = cv2.merge((l, ac, bc))
             frame_proc = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
-        except Exception as e:
-            print(f"[WARNING] Frame processing failed: {e}")
+        except:
             frame_proc = frame
         
         try:
             rgb = cv2.cvtColor(frame_proc, cv2.COLOR_BGR2RGB)
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
             res_hand = landmarker_hand.detect_for_video(mp_image, int((current_time - start_time_ref) * 1000))
-        except Exception as e:
-            print(f"[WARNING] Hand detection failed: {e}")
+        except:
             res_hand = None
         
         raw_p_pos, raw_a_pos = None, None
@@ -606,8 +523,8 @@ try:
                             pygame.draw.circle(screen, MAGENTA, (px, py), 10, 3)
                             badge = small_font.render("R", True, WHITE)
                             screen.blit(badge, (px - 5, py - 8))
-            except Exception as e:
-                print(f"[WARNING] Camera debug window rendering failed: {e}")
+            except:
+                pass
         elif SHOW_CAMERA_DEBUG and not ret:
             debug_x = WIDTH - DEBUG_WINDOW_SIZE[0] - 30
             debug_y = 30
@@ -626,13 +543,10 @@ try:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-                print("[INFO] User closed window - Exiting game")
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
-                    print("[INFO] ESC pressed - Exiting game")
                 elif event.key == pygame.K_SPACE and game_over:
-                    print("[INFO] SPACE pressed - Restarting game")
                     reset_game()
                 elif event.key == pygame.K_f:
                     toggle_fullscreen()
@@ -651,7 +565,7 @@ try:
                     chest_state = "GRABBED"
                     if grab_start_time is None:
                         grab_start_time = current_time
-                        print(f"[INFO] Game started! Protector grabbed the treasure at {current_time:.2f}s")
+                        print("Game started!")
             elif chest_state == "GRABBED":
                 if is_p_holding or p_tracking_lost:
                     treasure_pos += (p_hand_smooth - treasure_pos) * MOVE_SMOOTHING
@@ -714,7 +628,6 @@ try:
                 
                 if np.linalg.norm(t["pos"] - treasure_pos) < BASE_BORDER_RADIUS + 20:
                     lives -= 1
-                    print(f"[INFO] Treasure hit! Lives remaining: {lives}")
                     threats.pop(i)
                     if held_threat_id == t["id"]:
                         held_threat_id = None
@@ -729,12 +642,12 @@ try:
                     if lives <= 0:
                         game_over = True
                         win = False
-                        print(f"[INFO] GAME OVER - Attacker wins! Treasure destroyed.")
+                        print("Game Over - Attacker wins!")
 
             if grab_start_time and (current_time - grab_start_time) >= GAME_TIME:
                 game_over = True
                 win = True
-                print(f"[INFO] GAME OVER - Protector wins! Treasure survived {GAME_TIME} seconds!")
+                print("Game Over - Protector wins!")
 
         disp_pos = treasure_pos.copy()
         is_hit = (current_time - hit_anim_timer) < HIT_FLASH_DURATION
@@ -850,19 +763,12 @@ try:
             draw_game_over_screen(win, score, time_survived, threats_dodged)
 
         pygame.display.flip()
-
-        
         
 except KeyboardInterrupt:
-    print("\n[INFO] Game interrupted by user (Ctrl+C)")
+    print("\nGame interrupted")
 except Exception as e:
-    print(f"\n[ERROR] Unexpected error occurred: {e}")
-    import traceback
-    traceback.print_exc()
+    print(f"Error: {e}")
 finally:
-    print("[DEBUG] Cleaning up resources...")
     cap.release()
     pygame.quit()
-    print("[INFO] ═══════════════════════════════════════════════════")
-    print("[INFO] Game closed successfully")
-    print("[INFO] ═══════════════════════════════════════════════════")
+    print("Game closed")
