@@ -472,6 +472,8 @@ try:
             draw_game_over_screen(win, score, time_survived, threats_dodged)
 
         pygame.display.flip()
+
+        
         
 except KeyboardInterrupt:
     print("\nGame interrupted by user")
