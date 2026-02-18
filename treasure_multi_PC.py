@@ -83,11 +83,18 @@ DEBUG_WINDOW_SIZE = (320, 180)
 GAME_TIME = 60
 MODEL_PATH_HAND = "models/hand_landmarker.task"
 
-CHEST_IMAGE_PATH = r"C:\Users\pc\protecttreasure\CHEST_IMAGE_PATH.png"
-THREAT_IMAGE_PATH = r"C:\Users\pc\protecttreasure\THREAT_IMAGE_PATH.png"
-BACKGROUND_IMAGE_PATH = r"C:\Users\pc\protecttreasure\BACKGROUND_IMAGE_PATH.png"
-BACKGROUND_MUSIC_PATH = r"C:\Users\pc\protecttreasure\BACKGROUND_MUSIC_PATH.mp3"
-HIT_SOUND_PATH = r"C:\Users\pc\protecttreasure\HIT_SOUND_PATH.wav"
+# Camera zoom settings - adjust these to crop camera feed
+CAMERA_ZOOM_ENABLED = True  # Set to False to disable zoom
+CAMERA_CROP_TOP = 0.15      # Crop 15% from top (removes ceiling)
+CAMERA_CROP_BOTTOM = 0.15   # Crop 15% from bottom (removes floor)
+CAMERA_CROP_LEFT = 0.1      # Crop 10% from left
+CAMERA_CROP_RIGHT = 0.1     # Crop 10% from right
+
+CHEST_IMAGE_PATH = "assets/chest.png"
+THREAT_IMAGE_PATH = "assets/threat.png"
+BACKGROUND_IMAGE_PATH = "assets/background.jpeg"
+BACKGROUND_MUSIC_PATH = "assets/background_music.mp3"
+HIT_SOUND_PATH = "assets/hit_sound.wav"
 
 TREASURE_SIZE, THREAT_SIZE = 90, 60
 BASE_BORDER_RADIUS, BASE_GRAB_RADIUS = 70, 180
@@ -232,6 +239,27 @@ def get_grip_value(lm):
     avg_finger_dist = sum(math.dist((wrist.x, wrist.y), (lm[i].x, lm[i].y)) for i in tips) / 4.0
     return avg_finger_dist / hand_size
 
+def apply_camera_zoom(frame):
+    """Crop camera frame to focus on play area - helps detect hands at distance"""
+    if not CAMERA_ZOOM_ENABLED:
+        return frame
+    
+    h, w = frame.shape[:2]
+    
+    # Calculate crop boundaries
+    top = int(h * CAMERA_CROP_TOP)
+    bottom = int(h * (1 - CAMERA_CROP_BOTTOM))
+    left = int(w * CAMERA_CROP_LEFT)
+    right = int(w * (1 - CAMERA_CROP_RIGHT))
+    
+    # Crop the frame
+    cropped = frame[top:bottom, left:right]
+    
+    # Resize back to original dimensions to maintain consistency
+    zoomed = cv2.resize(cropped, (w, h))
+    
+    return zoomed
+
 def spawn_threat():
     return {
         "id": time.time() + random.random(),
@@ -248,16 +276,17 @@ def update_hand_physics(raw_pos, current_smooth, current_vel):
     if raw_pos is not None:
         distance = np.linalg.norm(raw_pos - current_smooth)
         
+        # Increased responsiveness for fast movements
         if distance > 50:
-            smooth_factor = 0.30
+            smooth_factor = 0.45  # Was 0.30 - much more responsive now
         elif distance > 20:
-            smooth_factor = 0.22
+            smooth_factor = 0.28  # Was 0.22 - slightly more responsive
         else:
-            smooth_factor = 0.15
+            smooth_factor = 0.15  # Keep precise movements smooth
         
         new_velocity = raw_pos - current_smooth
         smooth = (raw_pos * smooth_factor) + (current_smooth * (1 - smooth_factor))
-        vel = (new_velocity * 0.4) + (current_vel * 0.6)
+        vel = (new_velocity * 0.5) + (current_vel * 0.5)  # Was 0.4/0.6 - more responsive velocity
         return smooth, vel
     return current_smooth + current_vel, current_vel * 0.85
 
@@ -434,13 +463,31 @@ try:
             
         frame = cv2.flip(frame, 1)
         
+        # Apply camera zoom to focus on play area
+        frame = apply_camera_zoom(frame)
+        
         try:
+            # Enhanced contrast and brightness for better hand detection
             lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
-            l, ac, bc = cv2.split(lab)
-            clahe = cv2.createCLAHE(clipLimit=3.5, tileGridSize=(8,8))
+            l, a, b = cv2.split(lab)
+            
+            # CLAHE with stronger settings for better landmark detection
+            clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(8,8))  # Increased from 3.5 to 4.0
             l = clahe.apply(l)
-            limg = cv2.merge((l, ac, bc))
+            
+            # Slightly boost overall brightness
+            l = cv2.add(l, 10)  # Add brightness
+            l = np.clip(l, 0, 255).astype(np.uint8)
+            
+            limg = cv2.merge((l, a, b))
             frame_proc = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
+            
+            # Additional sharpening for clearer hand edges
+            kernel = np.array([[-1,-1,-1],
+                              [-1, 9,-1],
+                              [-1,-1,-1]])
+            frame_proc = cv2.filter2D(frame_proc, -1, kernel)
+            
         except:
             frame_proc = frame
         
@@ -716,18 +763,42 @@ try:
             pulse = abs(math.sin(current_time * 2)) * 0.3 + 0.7
             pulse_color = tuple(int(c * pulse) for c in GREEN)
             
+            # Main instruction
             instr = big_font.render("GRAB THE CHEST", True, pulse_color)
-            instr_rect = instr.get_rect(center=(WIDTH//2, HEIGHT//2 - 30))
+            instr_rect = instr.get_rect(center=(WIDTH//2, HEIGHT//2 - 80))
             
             shadow = big_font.render("GRAB THE CHEST", True, (0, 0, 0))
             shadow.set_alpha(150)
-            shadow_rect = shadow.get_rect(center=(WIDTH//2 + 3, HEIGHT//2 - 27))
+            shadow_rect = shadow.get_rect(center=(WIDTH//2 + 3, HEIGHT//2 - 77))
             screen.blit(shadow, shadow_rect)
             screen.blit(instr, instr_rect)
             
+            # Subtitle
             sub = medium_font.render("to begin your defense", True, (150, 150, 170))
-            sub_rect = sub.get_rect(center=(WIDTH//2, HEIGHT//2 + 50))
+            sub_rect = sub.get_rect(center=(WIDTH//2, HEIGHT//2 - 10))
             screen.blit(sub, sub_rect)
+            
+            # Important instruction - keep non-playing hands back
+            instruction_panel_y = HEIGHT//2 + 60
+            draw_ui_panel(screen, WIDTH//2 - 400, instruction_panel_y, 800, 120, alpha=200)
+            
+            warning_icon = medium_font.render("⚠️", True, WARNING)
+            warning_rect = warning_icon.get_rect(center=(WIDTH//2 - 350, instruction_panel_y + 35))
+            screen.blit(warning_icon, warning_rect)
+            
+            inst1 = font.render("IMPORTANT: Keep your non-playing hands", True, WHITE)
+            inst1_rect = inst1.get_rect(center=(WIDTH//2, instruction_panel_y + 30))
+            screen.blit(inst1, inst1_rect)
+            
+            inst2 = font.render("behind your back during gameplay", True, CYAN)
+            inst2_rect = inst2.get_rect(center=(WIDTH//2, instruction_panel_y + 70))
+            screen.blit(inst2, inst2_rect)
+            
+            # Player position guide
+            pos_y = HEIGHT//2 + 210
+            pos1 = small_font.render("Left Hand: Protector (defend chest)  •  Right Hand: Attacker (throw threats)", True, (180, 180, 200))
+            pos1_rect = pos1.get_rect(center=(WIDTH//2, pos_y))
+            screen.blit(pos1, pos1_rect)
             
         elif not game_over:
             rem = max(0, int(GAME_TIME - (current_time - grab_start_time)))
