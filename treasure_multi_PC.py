@@ -84,8 +84,8 @@ GAME_TIME = 60
 MODEL_PATH_HAND = "models/hand_landmarker.task"
 
 CHEST_IMAGE_PATH = "assets\chest.png"
-THREAT_IMAGE_PATH = "assets\threat.pngg"
-BACKGROUND_IMAGE_PATH = "assets\background_music.mp3"
+THREAT_IMAGE_PATH = "assets\threat.png"
+BACKGROUND_IMAGE_PATH = "assets\background.jpeg"
 BACKGROUND_MUSIC_PATH = "assets\background_music.mp3"
 HIT_SOUND_PATH = "assets\hit_sound.wav"
 
