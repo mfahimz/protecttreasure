@@ -92,7 +92,7 @@ CAMERA_CROP_RIGHT = 0.1     # Crop 10% from right
 
 CHEST_IMAGE_PATH = "assets/chest.png"
 THREAT_IMAGE_PATH = "assets/threat.png"
-BACKGROUND_IMAGE_PATH = "assets/background.png"
+BACKGROUND_IMAGE_PATH = "assets/background.jpeg"
 BACKGROUND_MUSIC_PATH = "assets/background_music.mp3"
 HIT_SOUND_PATH = "assets/hit_sound.wav"
 
