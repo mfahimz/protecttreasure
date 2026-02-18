@@ -80,14 +80,14 @@ pygame.display.set_caption("Treasure Guard - Enhanced Edition")
 CAMERA_INDEX = auto_select_camera()
 SHOW_CAMERA_DEBUG = True
 DEBUG_WINDOW_SIZE = (320, 180)
-GAME_TIME = 60
+GAME_TIME = 30
 MODEL_PATH_HAND = "models/hand_landmarker.task"
 
-CHEST_IMAGE_PATH = "assets\chest.png"
-THREAT_IMAGE_PATH = "assets\threat.png"
-BACKGROUND_IMAGE_PATH = "assets\background.jpeg"
-BACKGROUND_MUSIC_PATH = "assets\background_music.mp3"
-HIT_SOUND_PATH = "assets\hit_sound.wav"
+CHEST_IMAGE_PATH = r"assets\chest.png"
+THREAT_IMAGE_PATH = r"assets\threat.png"
+BACKGROUND_IMAGE_PATH = r"assets\background.jpeg"
+BACKGROUND_MUSIC_PATH = r"assets\background_music.mp3"
+HIT_SOUND_PATH = r"assets\hit_sound.wav"
 
 TREASURE_SIZE, THREAT_SIZE = 90, 60
 BASE_BORDER_RADIUS, BASE_GRAB_RADIUS = 70, 180
