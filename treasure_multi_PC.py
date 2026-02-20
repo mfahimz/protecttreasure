@@ -6,22 +6,15 @@ from mediapipe.tasks import python
 
 os.environ["SDL_VIDEO_CENTERED"] = "1"
 
-print("TREASURE GUARD - Enhanced Edition")
-print("Initializing...")
+print("TREASURE GUARD")
 
 pygame.init()
 
 def auto_select_display():
     num_displays = pygame.display.get_num_displays()
-    
     if num_displays > 1:
-        selected = 1
-        print(f"Display: {selected} (extended screen)")
-    else:
-        selected = 0
-        print(f"Display: {selected}")
-    
-    return selected
+        return 1
+    return 0
 
 def auto_select_camera():
     available_cameras = []
@@ -49,7 +42,6 @@ def auto_select_camera():
                 selected = cam[0]
                 break
     
-    print(f"Camera: {selected}")
     return selected
 
 USE_FULLSCREEN = True
@@ -67,7 +59,6 @@ if USE_FULLSCREEN:
     try:
         screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN, display=DISPLAY_INDEX)
         WIDTH, HEIGHT = screen.get_size()
-        print(f"Resolution: {WIDTH}x{HEIGHT}")
     except Exception as e:
         screen = pygame.display.set_mode((1920, 1080))
         WIDTH, HEIGHT = 1920, 1080
@@ -78,21 +69,21 @@ else:
 pygame.display.set_caption("Treasure Guard - Enhanced Edition")
 
 CAMERA_INDEX = auto_select_camera()
-SHOW_CAMERA_DEBUG = True
+SHOW_CAMERA_DEBUG = False  # Disabled by default - press C to toggle
 DEBUG_WINDOW_SIZE = (320, 180)
 GAME_TIME = 60
 MODEL_PATH_HAND = "models/hand_landmarker.task"
 
 # Camera zoom settings - adjust these to crop camera feed
 CAMERA_ZOOM_ENABLED = True  # Set to False to disable zoom
-CAMERA_CROP_TOP = 0.15      # Crop 15% from top (removes ceiling)
-CAMERA_CROP_BOTTOM = 0.15   # Crop 15% from bottom (removes floor)
-CAMERA_CROP_LEFT = 0.1      # Crop 10% from left
-CAMERA_CROP_RIGHT = 0.1     # Crop 10% from right
+CAMERA_CROP_TOP = 0.05      # Crop 5% from top (removes ceiling)
+CAMERA_CROP_BOTTOM = 0.05   # Crop 5% from bottom (removes floor)
+CAMERA_CROP_LEFT = 0.05     # Crop 5% from left
+CAMERA_CROP_RIGHT = 0.05    # Crop 5% from right
 
 CHEST_IMAGE_PATH = "assets/chest.png"
 THREAT_IMAGE_PATH = "assets/threat.png"
-BACKGROUND_IMAGE_PATH = "assets/background.jpeg"
+BACKGROUND_IMAGE_PATH = "assets/background.png"
 BACKGROUND_MUSIC_PATH = "assets/background_music.mp3"
 HIT_SOUND_PATH = "assets/hit_sound.wav"
 
@@ -129,8 +120,8 @@ WARNING = (245, 158, 11)
 
 options_hand = vision.HandLandmarkerOptions(
     base_options=python.BaseOptions(model_asset_path=MODEL_PATH_HAND),
-    running_mode=vision.RunningMode.VIDEO, num_hands=4,
-    min_hand_detection_confidence=0.4, min_tracking_confidence=0.4
+    running_mode=vision.RunningMode.VIDEO, num_hands=2,  # Only track 2 hands (one per player)
+    min_hand_detection_confidence=0.5, min_tracking_confidence=0.5  # More stable detection
 )
 landmarker_hand = vision.HandLandmarker.create_from_options(options_hand)
 
@@ -143,8 +134,7 @@ try:
     medium_font = pygame.font.Font(None, 70)
     font = pygame.font.Font(None, 45)
     small_font = pygame.font.Font(None, 32)
-except Exception as e:
-    print(f"[WARNING] Could not load custom fonts, using defaults: {e}")
+except:
     title_font = pygame.font.Font(None, 150)
     big_font = pygame.font.Font(None, 100)
     medium_font = pygame.font.Font(None, 60)
@@ -154,8 +144,7 @@ except Exception as e:
 def load_sound(path):
     try:
         return pygame.mixer.Sound(path)
-    except Exception as e:
-        print(f"[WARNING] Could not load sound {path}: {e}")
+    except:
         return None
 
 hit_sound = load_sound(HIT_SOUND_PATH)
@@ -164,8 +153,7 @@ def load_scale(path, size, fallback_color):
     try:
         img = pygame.image.load(path).convert_alpha()
         return pygame.transform.smoothscale(img, size)
-    except Exception as e:
-        print(f"[WARNING] Could not load image {path}: {e}")
+    except:
         surf = pygame.Surface(size)
         surf.fill(fallback_color)
         return surf
@@ -177,8 +165,8 @@ background_img = None
 try:
     bg_temp = pygame.image.load(BACKGROUND_IMAGE_PATH).convert()
     background_img = bg_temp
-except Exception as e:
-    print(f"Warning: Background image not loaded")
+except:
+    pass
 
 try:
     pygame.mixer.music.load(BACKGROUND_MUSIC_PATH)
@@ -195,19 +183,12 @@ if not cap.isOpened():
     cap = cv2.VideoCapture(0)
     CAMERA_INDEX = 0
 
-if cap.isOpened():
-    ret, test_frame = cap.read()
-    if ret:
-        print("Camera ready")
-    else:
-        print("Warning: Camera signal weak")
-else:
+if not cap.isOpened():
     print("ERROR: No camera detected!")
     pygame.quit()
     sys.exit(1)
 
 start_time_ref = time.time()
-print("Starting game...\n")
 
 treasure_pos = np.array([WIDTH // 4, HEIGHT // 2], dtype=float)
 p_hand_smooth = np.array([WIDTH // 4, HEIGHT // 2], dtype=float)
@@ -423,8 +404,7 @@ def get_scaled_background():
     if background_img is not None:
         try:
             return pygame.transform.smoothscale(background_img, (WIDTH, HEIGHT))
-        except Exception as e:
-            print(f"[WARNING] Failed to scale background: {e}")
+        except:
             return None
     return None
 
@@ -476,26 +456,20 @@ try:
         frame = apply_camera_zoom(frame)
         
         try:
-            # Enhanced contrast and brightness for better hand detection
+            # Balanced contrast and brightness for better hand detection
             lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
             l, a, b = cv2.split(lab)
             
-            # CLAHE with stronger settings for better landmark detection
-            clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(8,8))  # Increased from 3.5 to 4.0
+            # CLAHE with moderate settings
+            clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
             l = clahe.apply(l)
             
-            # Slightly boost overall brightness
-            l = cv2.add(l, 10)  # Add brightness
+            # Slight brightness boost
+            l = cv2.add(l, 5)
             l = np.clip(l, 0, 255).astype(np.uint8)
             
             limg = cv2.merge((l, a, b))
             frame_proc = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
-            
-            # Additional sharpening for clearer hand edges
-            kernel = np.array([[-1,-1,-1],
-                              [-1, 9,-1],
-                              [-1,-1,-1]])
-            frame_proc = cv2.filter2D(frame_proc, -1, kernel)
             
         except:
             frame_proc = frame
@@ -511,6 +485,11 @@ try:
         if res_hand and res_hand.hand_landmarks:
             for lm in res_hand.hand_landmarks:
                 wrist = lm[0]
+                
+                # Quick boundary check - skip hands outside play area
+                if wrist.x < 0.1 or wrist.x > 0.9 or wrist.y < 0.1 or wrist.y > 0.9:
+                    continue
+                
                 px = np.array([wrist.x * WIDTH, wrist.y * HEIGHT], dtype=float)
                 grip = get_grip_value(lm)
                 
@@ -624,7 +603,6 @@ try:
                     chest_state = "GRABBED"
                     if grab_start_time is None:
                         grab_start_time = current_time
-                        print("Game started!")
             elif chest_state == "GRABBED":
                 if is_p_holding or p_tracking_lost:
                     treasure_pos += (p_hand_smooth - treasure_pos) * MOVE_SMOOTHING
@@ -640,22 +618,6 @@ try:
                     held_threat_id = target["id"]
                     held_start_time = current_time
                     a_release_counter = 0
-            
-            if held_threat_id is None and not a_tracking_lost:
-                for t in threats:
-                    if t["state"] == "IDLE":
-                        dist = math.dist(a_hand_smooth, t["pos"])
-                        if dist < 150:
-                            if a_grip < A_GRAB_THRESH + 0.1:
-                                ring_color = ORANGE
-                                ring_alpha = int((1 - (dist / 150)) * 200)
-                                ring_surf = pygame.Surface((THREAT_SIZE + 20, THREAT_SIZE + 20))
-                                ring_surf.set_alpha(ring_alpha)
-                                pygame.draw.circle(ring_surf, ring_color,
-                                                 (THREAT_SIZE//2 + 10, THREAT_SIZE//2 + 10),
-                                                 THREAT_SIZE//2 + 5, 3)
-                                screen.blit(ring_surf, (int(t["pos"][0] - THREAT_SIZE//2 - 10),
-                                                       int(t["pos"][1] - THREAT_SIZE//2 - 10)))
 
             for i in range(len(threats) - 1, -1, -1):
                 t = threats[i]
@@ -705,12 +667,10 @@ try:
                     if lives <= 0:
                         game_over = True
                         win = False
-                        print("Game Over - Attacker wins!")
 
             if grab_start_time and (current_time - grab_start_time) >= GAME_TIME:
                 game_over = True
                 win = True
-                print("Game Over - Protector wins!")
 
         disp_pos = treasure_pos.copy()
         is_hit = (current_time - hit_anim_timer) < HIT_FLASH_DURATION
@@ -750,100 +710,52 @@ try:
             screen.blit(rot, rot.get_rect(center=(int(t["pos"][0]), int(t["pos"][1]))).topleft)
         
         if not p_tracking_lost:
-            pygame.draw.circle(screen, (0, 0, 0), p_hand_smooth.astype(int), 20)
-            pygame.draw.circle(screen, CYAN, p_hand_smooth.astype(int), 18, 4)
-            pygame.draw.circle(screen, (255, 255, 255), p_hand_smooth.astype(int), 10, 2)
+            pygame.draw.circle(screen, (0, 0, 0), p_hand_smooth.astype(int), 22)
+            pygame.draw.circle(screen, CYAN, p_hand_smooth.astype(int), 20, 4)
             
         if not a_tracking_lost:
             hand_color = ORANGE if held_threat_id else MAGENTA
-            
-            if a_grip < A_GRAB_THRESH + 0.2:
-                grip_strength = max(0, min(1, (A_GRAB_THRESH + 0.2 - a_grip) / 0.3))
-                glow_size = int(20 + grip_strength * 10)
-                glow_alpha = int(grip_strength * 150)
-                
-                glow = pygame.Surface((glow_size * 2, glow_size * 2))
-                glow.set_alpha(glow_alpha)
-                pygame.draw.circle(glow, hand_color, (glow_size, glow_size), glow_size)
-                screen.blit(glow, (int(a_hand_smooth[0] - glow_size),
-                                  int(a_hand_smooth[1] - glow_size)))
-            
-            pygame.draw.circle(screen, (0, 0, 0), a_hand_smooth.astype(int), 20)
-            pygame.draw.circle(screen, hand_color, a_hand_smooth.astype(int), 18, 4)
-            
-            inner_size = int(10 * (a_grip / 2.0))
-            if inner_size > 2:
-                pygame.draw.circle(screen, (255, 255, 255), a_hand_smooth.astype(int), inner_size, 2)
+            pygame.draw.circle(screen, (0, 0, 0), a_hand_smooth.astype(int), 22)
+            pygame.draw.circle(screen, hand_color, a_hand_smooth.astype(int), 20, 4)
 
         if not grab_start_time and not game_over:
             pulse = abs(math.sin(current_time * 2)) * 0.3 + 0.7
             pulse_color = tuple(int(c * pulse) for c in GREEN)
             
             # Main instruction
-            instr = big_font.render("GRAB THE CHEST", True, pulse_color)
-            instr_rect = instr.get_rect(center=(WIDTH//2, HEIGHT//2 - 80))
+            instr = big_font.render("GRAB THE CHEST TO START", True, pulse_color)
+            instr_rect = instr.get_rect(center=(WIDTH//2, HEIGHT//2 - 50))
             
-            shadow = big_font.render("GRAB THE CHEST", True, (0, 0, 0))
+            shadow = big_font.render("GRAB THE CHEST TO START", True, (0, 0, 0))
             shadow.set_alpha(150)
-            shadow_rect = shadow.get_rect(center=(WIDTH//2 + 3, HEIGHT//2 - 77))
+            shadow_rect = shadow.get_rect(center=(WIDTH//2 + 3, HEIGHT//2 - 47))
             screen.blit(shadow, shadow_rect)
             screen.blit(instr, instr_rect)
             
-            # Subtitle
-            sub = medium_font.render("to begin your defense", True, (150, 150, 170))
-            sub_rect = sub.get_rect(center=(WIDTH//2, HEIGHT//2 - 10))
-            screen.blit(sub, sub_rect)
-            
-            # Important instruction - keep non-playing hands back
-            instruction_panel_y = HEIGHT//2 + 60
-            draw_ui_panel(screen, WIDTH//2 - 400, instruction_panel_y, 800, 120, alpha=200)
-            
-            warning_icon = medium_font.render("⚠️", True, WARNING)
-            warning_rect = warning_icon.get_rect(center=(WIDTH//2 - 350, instruction_panel_y + 35))
-            screen.blit(warning_icon, warning_rect)
-            
-            inst1 = font.render("IMPORTANT: Keep your non-playing hands", True, WHITE)
-            inst1_rect = inst1.get_rect(center=(WIDTH//2, instruction_panel_y + 30))
-            screen.blit(inst1, inst1_rect)
-            
-            inst2 = font.render("behind your back during gameplay", True, CYAN)
-            inst2_rect = inst2.get_rect(center=(WIDTH//2, instruction_panel_y + 70))
-            screen.blit(inst2, inst2_rect)
-            
-            # Player position guide
-            pos_y = HEIGHT//2 + 210
-            pos1 = small_font.render("Left Hand: Protector (defend chest)  •  Right Hand: Attacker (throw threats)", True, (180, 180, 200))
-            pos1_rect = pos1.get_rect(center=(WIDTH//2, pos_y))
-            screen.blit(pos1, pos1_rect)
+            # Simple hand instruction
+            inst = font.render("Keep non-playing hands behind your back", True, (180, 180, 200))
+            inst_rect = inst.get_rect(center=(WIDTH//2, HEIGHT//2 + 30))
+            screen.blit(inst, inst_rect)
             
         elif not game_over:
             rem = max(0, int(GAME_TIME - (current_time - grab_start_time)))
             
-            stats_panel_x = 25
-            stats_panel_y = 25
+            stats_x = 40
+            stats_y = 40
             
-            hearts_display = "❤️ " * lives
-            if lives == 0:
-                hearts_display = "💔 💔 💔"
+            # Lives - top left
+            hearts = "❤️ " * lives if lives > 0 else "💔 💔 💔"
+            hearts_surf = big_font.render(hearts.strip(), True, DANGER if lives <= 1 else SUCCESS)
+            screen.blit(hearts_surf, (stats_x, stats_y))
             
-            draw_stat_display(screen, "❤️", "LIVES", hearts_display.strip(),
-                            stats_panel_x, stats_panel_y, DANGER if lives <= 1 else SUCCESS)
-            
+            # Timer - below lives
             timer_color = DANGER if rem <= 10 else WARNING if rem <= 30 else CYAN
-            draw_stat_display(screen, "⏱️", "TIME", f"{rem}s",
-                            stats_panel_x, stats_panel_y + 75, timer_color)
+            timer_surf = big_font.render(f"⏱️ {rem}s", True, timer_color)
+            screen.blit(timer_surf, (stats_x, stats_y + 80))
             
-            draw_stat_display(screen, "⭐", "SCORE", score,
-                            stats_panel_x, stats_panel_y + 150, GOLD)
-            
-            draw_stat_display(screen, "🎯", "DODGED", threats_dodged,
-                            stats_panel_x, stats_panel_y + 225, GREEN)
-            
-            hint_y = HEIGHT - 40
-            hint_text = small_font.render("F: Fullscreen  •  C: Camera  •  ESC: Quit",
-                                         True, (100, 100, 120))
-            hint_rect = hint_text.get_rect(center=(WIDTH//2, hint_y))
-            screen.blit(hint_text, hint_rect)
+            # Score - below timer
+            score_surf = big_font.render(f"⭐ {score}", True, GOLD)
+            screen.blit(score_surf, (stats_x, stats_y + 160))
         
         if game_over:
             time_survived = current_time - grab_start_time if grab_start_time else 0
@@ -852,10 +764,9 @@ try:
         pygame.display.flip()
         
 except KeyboardInterrupt:
-    print("\nGame interrupted")
+    pass
 except Exception as e:
     print(f"Error: {e}")
 finally:
     cap.release()
     pygame.quit()
-    print("Game closed")
