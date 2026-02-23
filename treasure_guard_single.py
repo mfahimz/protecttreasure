@@ -91,9 +91,9 @@ DEBUG_WINDOW_MAX_HEIGHT = 101
 GAME_TIME = 30  # 30 seconds to survive
 MODEL_PATH_HAND = "models/hand_landmarker.task"
 
-# Camera zoom settings - FIXED at 1.25x (no user control)
+# Camera zoom settings - FIXED at 1.5x for better far-distance detection
 CAMERA_ZOOM_ENABLED = True
-CAMERA_ZOOM_AMOUNT = 0.10  # 10% crop per side = 1.25x zoom
+CAMERA_ZOOM_AMOUNT = 0.15  # 15% crop per side = 1.5x zoom (was 0.10)
 
 # ============================================================
 # FILE PATHS
@@ -102,7 +102,7 @@ CAMERA_ZOOM_AMOUNT = 0.10  # 10% crop per side = 1.25x zoom
 CHEST_IMAGE_PATH = "assets/chest.png"
 THREAT_IMAGE_PATH = "assets/threat.png"
 GRENADE_IMAGE_PATH = "assets/grenade.png"  # New grenade threat
-BACKGROUND_IMAGE_PATH = "assets/background.jpeg"
+BACKGROUND_IMAGE_PATH = "assets/background.png"
 BACKGROUND_MUSIC_PATH = "assets/background_music.mp3"
 HIT_SOUND_PATH = "assets/hit_sound.wav"
 
@@ -111,13 +111,13 @@ HIT_SOUND_PATH = "assets/hit_sound.wav"
 # ============================================================
 
 TREASURE_SIZE, THREAT_SIZE = 90, 60
-GRENADE_SIZE = 70  # Larger than regular threats
+GRENADE_SIZE = 90  # Same as treasure size - make it very visible
 BASE_BORDER_RADIUS, BASE_GRAB_RADIUS = 70, 180
 MAX_LIVES = 3.0  # Using float for half-lives (0.5 damage per hit)
 HIT_FLASH_DURATION = 0.4
 SHAKE_INTENSITY = 12
 
-GRENADE_INTERVAL = 8.0  # Grenade spawns every 8 seconds
+GRENADE_INTERVAL = 10.0  # Grenade spawns every 10 seconds (was 8)
 
 P_GRAB_THRESH, P_DROP_THRESH = 1.3, 1.9
 MOVE_SMOOTHING = 0.20
@@ -151,8 +151,8 @@ options_hand = vision.HandLandmarkerOptions(
     base_options=python.BaseOptions(model_asset_path=MODEL_PATH_HAND),
     running_mode=vision.RunningMode.VIDEO,
     num_hands=1,
-    min_hand_detection_confidence=0.5,
-    min_tracking_confidence=0.5
+    min_hand_detection_confidence=0.4,  # Lower for better far detection (was 0.5)
+    min_tracking_confidence=0.4          # Lower for better far tracking (was 0.5)
 )
 landmarker_hand = vision.HandLandmarker.create_from_options(options_hand)
 
@@ -268,11 +268,12 @@ def get_grip_value(lm):
     return avg_finger_dist / hand_size
 
 def is_valid_hand_size(lm):
-    """Filter out background objects by hand size"""
+    """Filter out background objects by hand size - relaxed for far distance"""
     try:
         wrist, mcp = lm[0], lm[9]
         hand_size = math.dist((wrist.x, wrist.y), (mcp.x, mcp.y))
-        return 0.07 < hand_size < 0.35
+        # More lenient - allow smaller hands for far distance
+        return 0.05 < hand_size < 0.40  # Was 0.07-0.35
     except:
         return True
 
@@ -539,13 +540,15 @@ try:
             lm = res_hand.hand_landmarks[0]
             wrist = lm[0]
             
-            if wrist.x < 0.1 or wrist.x > 0.9 or wrist.y < 0.1 or wrist.y > 0.9:
-                pass
+            # More lenient boundaries - allow edges for far players
+            if wrist.x < 0.05 or wrist.x > 0.95 or wrist.y < 0.05 or wrist.y > 0.95:
+                pass  # Only reject extreme edges
             elif is_valid_hand_size(lm):
                 px = np.array([wrist.x * WIDTH, wrist.y * HEIGHT], dtype=float)
                 grip = get_grip_value(lm)
                 
-                if 0.5 < grip < 3.0:
+                # More lenient grip range for far hands
+                if 0.3 < grip < 4.0:  # Was 0.5-3.0
                     raw_pos = px
                     hand_grip = grip
                     hand_tracking_lost = False
@@ -612,18 +615,22 @@ try:
                     threats.append(spawn_threat(is_grenade=True, chest_position=treasure_pos))
                     last_grenade_time = current_time
             
-            is_holding = (chest_state == "IDLE" and hand_grip < P_GRAB_THRESH) or \
-                        (chest_state == "GRABBED" and hand_grip < P_DROP_THRESH)
+            # Chest control - MUST keep fist closed to hold
+            is_holding = hand_grip < P_GRAB_THRESH and not hand_tracking_lost
             
-            if chest_state == "IDLE" and is_holding and not hand_tracking_lost:
+            if chest_state == "IDLE" and is_holding:
+                # Start holding when fist is near chest
                 if np.linalg.norm(hand_smooth - treasure_pos) < BASE_GRAB_RADIUS:
                     chest_state = "GRABBED"
                     if grab_start_time is None:
                         grab_start_time = current_time
+                        
             elif chest_state == "GRABBED":
-                if is_holding or hand_tracking_lost:
+                if is_holding:
+                    # Keep holding - chest follows hand
                     treasure_pos += (hand_smooth - treasure_pos) * MOVE_SMOOTHING
                 else:
+                    # Hand opened or lost tracking - release chest immediately
                     chest_state = "IDLE"
             
             for i in range(len(threats) - 1, -1, -1):
