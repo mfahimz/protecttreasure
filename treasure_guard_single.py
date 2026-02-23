@@ -80,17 +80,20 @@ else:
 pygame.display.set_caption("Treasure Guard - Single Player")
 
 CAMERA_INDEX = auto_select_camera()
-SHOW_CAMERA_DEBUG = False
-DEBUG_WINDOW_SIZE = (320, 180)
-GAME_TIME = 30  # Changed from 60 to 30 seconds
+
+# Camera preview ALWAYS ON in top-right corner (arcade mode)
+SHOW_CAMERA_DEBUG = True
+
+# Small fixed preview size
+DEBUG_WINDOW_MAX_WIDTH = 180
+DEBUG_WINDOW_MAX_HEIGHT = 101
+
+GAME_TIME = 30  # 30 seconds to survive
 MODEL_PATH_HAND = "models/hand_landmarker.task"
 
-# Camera zoom settings
+# Camera zoom settings - FIXED at 1.25x (no user control)
 CAMERA_ZOOM_ENABLED = True
-CAMERA_CROP_TOP = 0.05
-CAMERA_CROP_BOTTOM = 0.05
-CAMERA_CROP_LEFT = 0.05
-CAMERA_CROP_RIGHT = 0.05
+CAMERA_ZOOM_AMOUNT = 0.10  # 10% crop per side = 1.25x zoom
 
 # ============================================================
 # FILE PATHS
@@ -99,7 +102,7 @@ CAMERA_CROP_RIGHT = 0.05
 CHEST_IMAGE_PATH = "assets/chest.png"
 THREAT_IMAGE_PATH = "assets/threat.png"
 GRENADE_IMAGE_PATH = "assets/grenade.png"  # New grenade threat
-BACKGROUND_IMAGE_PATH = "assets/background.png"
+BACKGROUND_IMAGE_PATH = "assets/background.jpeg"
 BACKGROUND_MUSIC_PATH = "assets/background_music.mp3"
 HIT_SOUND_PATH = "assets/hit_sound.wav"
 
@@ -274,15 +277,17 @@ def is_valid_hand_size(lm):
         return True
 
 def apply_camera_zoom(frame):
-    """Crop camera frame to focus on play area"""
+    """Crop camera frame with fixed 1.25x zoom"""
     if not CAMERA_ZOOM_ENABLED:
         return frame
     
     h, w = frame.shape[:2]
-    top = int(h * CAMERA_CROP_TOP)
-    bottom = int(h * (1 - CAMERA_CROP_BOTTOM))
-    left = int(w * CAMERA_CROP_LEFT)
-    right = int(w * (1 - CAMERA_CROP_RIGHT))
+    
+    # Fixed 10% crop per side
+    top = int(h * CAMERA_ZOOM_AMOUNT)
+    bottom = int(h * (1 - CAMERA_ZOOM_AMOUNT))
+    left = int(w * CAMERA_ZOOM_AMOUNT)
+    right = int(w * (1 - CAMERA_ZOOM_AMOUNT))
     
     cropped = frame[top:bottom, left:right]
     zoomed = cv2.resize(cropped, (w, h))
@@ -480,21 +485,6 @@ def get_scaled_background():
 frame_count = 0
 scaled_background = get_scaled_background()
 
-def toggle_fullscreen():
-    global WIDTH, HEIGHT, USE_FULLSCREEN, screen, scaled_background
-    USE_FULLSCREEN = not USE_FULLSCREEN
-    if USE_FULLSCREEN:
-        screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-        WIDTH, HEIGHT = screen.get_size()
-    else:
-        screen = pygame.display.set_mode((1920, 1080), pygame.RESIZABLE)
-        WIDTH, HEIGHT = 1920, 1080
-    scaled_background = get_scaled_background()
-
-def toggle_camera_debug():
-    global SHOW_CAMERA_DEBUG
-    SHOW_CAMERA_DEBUG = not SHOW_CAMERA_DEBUG
-
 # ============================================================
 # MAIN LOOP
 # ============================================================
@@ -570,35 +560,31 @@ try:
         else:
             screen.fill(DARK_BG)
         
-        # Camera debug window
-        if SHOW_CAMERA_DEBUG and ret:
+        # Camera preview - ALWAYS ON in top-right corner (arcade mode)
+        if ret:
             try:
-                debug_frame = cv2.resize(frame, DEBUG_WINDOW_SIZE)
+                # Small fixed size
+                preview_size = (DEBUG_WINDOW_MAX_WIDTH, DEBUG_WINDOW_MAX_HEIGHT)
+                
+                debug_frame = cv2.resize(frame, preview_size)
                 debug_frame = cv2.cvtColor(debug_frame, cv2.COLOR_BGR2RGB)
                 debug_frame = np.rot90(debug_frame)
                 debug_frame = np.flipud(debug_frame)
                 debug_surface = pygame.surfarray.make_surface(debug_frame)
                 
-                debug_x = WIDTH - DEBUG_WINDOW_SIZE[0] - 30
-                debug_y = 30
+                # Position in top-right
+                debug_x = WIDTH - preview_size[0] - 20
+                debug_y = 20
                 
-                pygame.draw.rect(screen, (0, 0, 0), (debug_x - 5, debug_y - 5, DEBUG_WINDOW_SIZE[0] + 10, DEBUG_WINDOW_SIZE[1] + 10), border_radius=10)
-                pygame.draw.rect(screen, UI_ACCENT, (debug_x - 4, debug_y - 4, DEBUG_WINDOW_SIZE[0] + 8, DEBUG_WINDOW_SIZE[1] + 8), 3, border_radius=10)
+                # Border
+                pygame.draw.rect(screen, (0, 0, 0), 
+                               (debug_x - 3, debug_y - 3, preview_size[0] + 6, preview_size[1] + 6), 
+                               border_radius=8)
+                pygame.draw.rect(screen, UI_ACCENT, 
+                               (debug_x - 2, debug_y - 2, preview_size[0] + 4, preview_size[1] + 4), 
+                               2, border_radius=8)
+                
                 screen.blit(debug_surface, (debug_x, debug_y))
-                
-                status_bar_y = debug_y + DEBUG_WINDOW_SIZE[1] + 10
-                draw_ui_panel(screen, debug_x - 5, status_bar_y, DEBUG_WINDOW_SIZE[0] + 10, 35, alpha=240)
-                
-                cam_dot = small_font.render("●", True, SUCCESS)
-                screen.blit(cam_dot, (debug_x + 5, status_bar_y + 5))
-                
-                cam_text = f"CAM {CAMERA_INDEX}"
-                cam_label = small_font.render(cam_text, True, WHITE)
-                screen.blit(cam_label, (debug_x + 25, status_bar_y + 8))
-                
-                fps_text = f"{int(clock.get_fps())} FPS"
-                fps_label = small_font.render(fps_text, True, (150, 150, 170))
-                screen.blit(fps_label, (debug_x + DEBUG_WINDOW_SIZE[0] - 70, status_bar_y + 8))
             except:
                 pass
         
@@ -610,10 +596,6 @@ try:
                     running = False
                 elif event.key == pygame.K_SPACE and game_over:
                     reset_game()
-                elif event.key == pygame.K_f:
-                    toggle_fullscreen()
-                elif event.key == pygame.K_c:
-                    toggle_camera_debug()
         
         if not game_over:
             # Spawn regular threats - pass chest position for semi-targeting
@@ -726,24 +708,13 @@ try:
         pygame.draw.circle(screen, c_col, disp_pos.astype(int), BASE_BORDER_RADIUS - 5, 2)
         screen.blit(chest_img, (int(disp_pos[0]-45), int(disp_pos[1]-45)))
         
-        # Draw threats with different visuals for grenades
+        # Draw threats - grenades and regular threats use their images
         for t in threats:
-            if t["type"] == "grenade":
-                # Grenade with pulsing red glow
-                pulse_size = int(5 + abs(math.sin(current_time * 10)) * 10)
-                glow_surf = pygame.Surface((GRENADE_SIZE + pulse_size*2, GRENADE_SIZE + pulse_size*2))
-                glow_surf.set_alpha(150)
-                pygame.draw.circle(glow_surf, DANGER, (GRENADE_SIZE//2 + pulse_size, GRENADE_SIZE//2 + pulse_size), 
-                                 GRENADE_SIZE//2 + pulse_size)
-                screen.blit(glow_surf, (int(t["pos"][0] - GRENADE_SIZE//2 - pulse_size),
-                                       int(t["pos"][1] - GRENADE_SIZE//2 - pulse_size)))
-                
-                rot = pygame.transform.rotate(grenade_img, t.get("angle", 0))
-                screen.blit(rot, rot.get_rect(center=(int(t["pos"][0]), int(t["pos"][1]))).topleft)
-            else:
-                # Regular threat
-                rot = pygame.transform.rotate(threat_img, t.get("angle", 0))
-                screen.blit(rot, rot.get_rect(center=(int(t["pos"][0]), int(t["pos"][1]))).topleft)
+            rot = pygame.transform.rotate(
+                grenade_img if t["type"] == "grenade" else threat_img, 
+                t.get("angle", 0)
+            )
+            screen.blit(rot, rot.get_rect(center=(int(t["pos"][0]), int(t["pos"][1]))).topleft)
         
         # Hand cursor
         if not hand_tracking_lost:
