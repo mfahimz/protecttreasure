@@ -29,8 +29,7 @@ MODEL_PATH = "models/hand_landmarker.task"  # Path to MediaPipe hand model
 
 CHEST_IMAGE_PATH = "assets/chest.png"           # Treasure image
 THREAT_IMAGE_PATH = "assets/threat.png"         # Threat image
-BACKGROUND_IMAGE_PATH = "assets/background.png" # Background image
-
+BACKGROUND_IMAGE_PATH = "assets/background.jpeg" # Background image
 BACKGROUND_MUSIC_PATH = "assets/background_music.mp3"  # Background music file
 HIT_SOUND_PATH = "assets/hit_sound.wav"                 # Sound when treasure is hit
 
