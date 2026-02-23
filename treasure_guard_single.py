@@ -29,13 +29,21 @@ MODEL_PATH = "models/hand_landmarker.task"  # Path to MediaPipe hand model
 
 CHEST_IMAGE_PATH = "assets/chest.png"           # Treasure image
 THREAT_IMAGE_PATH = "assets/threat.png"         # Threat image
-BACKGROUND_IMAGE_PATH = "assets/background.jpeg" # Background image
+BACKGROUND_IMAGE_PATH = "assets/background.png" # Background image
+
 BACKGROUND_MUSIC_PATH = "assets/background_music.mp3"  # Background music file
 HIT_SOUND_PATH = "assets/hit_sound.wav"                 # Sound when treasure is hit
 
 # ============================================================
 # CAMERA AUTO-DETECTION (Cross-platform)
 # ============================================================
+
+def auto_select_display():
+    """Automatically select display - prefer extended screen if available"""
+    num_displays = pygame.display.get_num_displays()
+    if num_displays > 1:
+        return 1  # Use extended screen
+    return 0  # Use primary screen
 
 def auto_select_camera():
     """Automatically detect best available camera on any OS"""
@@ -75,6 +83,22 @@ def auto_select_camera():
 CAMERA_INDEX = auto_select_camera()
 
 # ============================================================
+# FULLSCREEN CONFIGURATION
+# ============================================================
+
+USE_FULLSCREEN = True
+DISPLAY_INDEX = auto_select_display()
+
+# Get screen resolution
+try:
+    if DISPLAY_INDEX < len(pygame.display.get_desktop_sizes()):
+        WIDTH, HEIGHT = pygame.display.get_desktop_sizes()[DISPLAY_INDEX]
+    else:
+        WIDTH, HEIGHT = 1920, 1080
+except:
+    WIDTH, HEIGHT = 1920, 1080
+
+# ============================================================
 # GAME OBJECT SIZES AND PHYSICS
 # ============================================================
 
@@ -111,7 +135,18 @@ landmarker = vision.HandLandmarker.create_from_options(options)    # Create hand
 pygame.init()                          # Initialize pygame
 pygame.mixer.init()                    # Initialize sound mixer
 
-screen = pygame.display.set_mode((WIDTH, HEIGHT))  # Create window
+# Create fullscreen window or regular window
+if USE_FULLSCREEN:
+    try:
+        screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN, display=DISPLAY_INDEX)
+        WIDTH, HEIGHT = screen.get_size()  # Update dimensions to actual screen size
+    except Exception as e:
+        screen = pygame.display.set_mode((1920, 1080))
+        WIDTH, HEIGHT = 1920, 1080
+        USE_FULLSCREEN = False
+else:
+    screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+
 pygame.display.set_caption("Treasure Guard")       # Set window title
 
 clock = pygame.time.Clock()            # Clock to control FPS
@@ -136,16 +171,32 @@ except:
     print("Hit sound not found - continuing without sound")
 
 # ============================================================
-# LOAD IMAGES (with fallback colors)
+# LOAD IMAGES (with fallback colors and dynamic scaling)
 # ============================================================
 
+background_img = None
 try:
     background_img = pygame.image.load(BACKGROUND_IMAGE_PATH).convert()
-    background_img = pygame.transform.smoothscale(background_img, (WIDTH, HEIGHT))
 except:
     print("Background image not found - using solid color")
-    background_img = pygame.Surface((WIDTH, HEIGHT))
-    background_img.fill((15, 15, 25))  # Dark blue background
+
+def get_scaled_background():
+    """Get background scaled to current screen size"""
+    global background_img
+    if background_img is not None:
+        try:
+            return pygame.transform.smoothscale(background_img, (WIDTH, HEIGHT))
+        except:
+            return None
+    return None
+
+# Initial background scaling
+scaled_background = get_scaled_background()
+
+# Fallback if no background
+if scaled_background is None:
+    scaled_background = pygame.Surface((WIDTH, HEIGHT))
+    scaled_background.fill((15, 15, 25))  # Dark blue background
 
 try:
     chest_img = pygame.image.load(CHEST_IMAGE_PATH).convert_alpha()
@@ -232,6 +283,21 @@ def spawn_threat():
 
     return {"pos": pos, "vel": direction * speed}
 
+def toggle_fullscreen():
+    """Toggle between fullscreen and windowed mode"""
+    global WIDTH, HEIGHT, USE_FULLSCREEN, screen, scaled_background
+    USE_FULLSCREEN = not USE_FULLSCREEN
+    if USE_FULLSCREEN:
+        screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+        WIDTH, HEIGHT = screen.get_size()
+    else:
+        screen = pygame.display.set_mode((1920, 1080), pygame.RESIZABLE)
+        WIDTH, HEIGHT = 1920, 1080
+    scaled_background = get_scaled_background()
+    if scaled_background is None:
+        scaled_background = pygame.Surface((WIDTH, HEIGHT))
+        scaled_background.fill((15, 15, 25))
+
 # ============================================================
 # MAIN GAME LOOP
 # ============================================================
@@ -244,7 +310,7 @@ running = True
 while running:
     clock.tick(60)                                                # Run at 60 FPS
 
-    screen.blit(background_img, (0, 0))                           # Draw background
+    screen.blit(scaled_background, (0, 0))                        # Draw background
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -252,6 +318,8 @@ while running:
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 running = False
+            elif event.key == pygame.K_f:
+                toggle_fullscreen()
 
     ret, frame = cap.read()                                       # Read webcam frame
     if not ret:
@@ -338,7 +406,7 @@ while running:
         text_rect = end_text.get_rect(center=(WIDTH//2, HEIGHT//2))
         screen.blit(end_text, text_rect)
         
-        restart_text = font.render("Press ESC to exit", True, (255, 255, 255))
+        restart_text = font.render("Press ESC to exit  •  Press F for Fullscreen", True, (255, 255, 255))
         restart_rect = restart_text.get_rect(center=(WIDTH//2, HEIGHT//2 + 60))
         screen.blit(restart_text, restart_rect)
 
