@@ -4,7 +4,7 @@ import mediapipe as mp
 from mediapipe.tasks.python import vision
 from mediapipe.tasks import python
 
-print("TREASURE GUARD - Level Mode ENHANCED")
+print("TREASURE GUARD - Ultimate Challenge")
 
 pygame.init()
 
@@ -71,7 +71,7 @@ if USE_FULLSCREEN:
 else:
     screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 
-pygame.display.set_caption("Treasure Guard - Enhanced")
+pygame.display.set_caption("Treasure Guard - Ultimate Challenge")
 
 CAMERA_INDEX = auto_select_camera()
 SHOW_CAMERA_DEBUG = True
@@ -80,70 +80,124 @@ DEBUG_WINDOW_MAX_HEIGHT = 101
 
 MODEL_PATH_HAND = "models/hand_landmarker.task"
 
-# Camera zoom settings - FIXED at 1.5x
 CAMERA_ZOOM_ENABLED = True
 CAMERA_ZOOM_AMOUNT = 0.15
 
 # ============================================================
-# LEVEL SYSTEM CONFIGURATION
+# THREAT TYPE DEFINITIONS
 # ============================================================
+
+THREAT_TYPES = {
+    "threat": {
+        "name": "threat",
+        "damage": 0.5,
+        "size": 60,  # Threat
+        "image_path": "assets/threat.png",
+        "fallback_color": (255, 100, 100),
+        "points": 10,
+        "collision_radius": 20,
+        "description": "Basic threat"
+    },
+    "rocket": {
+        "name": "Rocket",
+        "damage": 1.0,
+        "size": 110,  # Rocket
+        "image_path": "assets/rocket.png",
+        "fallback_color": (255, 150, 50),
+        "points": 20,
+        "collision_radius": 40,
+        "description": "Faster, more damage"
+    },
+    "grenade": {
+        "name": "Grenade",
+        "damage": 3.0,  # Instant death
+        "size": 120,  # Nuke  # Grenade
+        "image_path": "assets/grenade.png",
+        "fallback_color": (255, 200, 0),
+        "points": 30,
+        "collision_radius": 40,
+        "description": "One hit kill"
+    },
+    "nuke": {
+        "name": "Nuke",
+        "damage": 3.0,  # Instant death
+        "size": 120,  # Nuke
+        "image_path": "assets/nuke.png",
+        "fallback_color": (200, 0, 255),
+        "points": 50,
+        "collision_radius": 40,
+        "description": "Devastating!"
+    }
+}
+
+# ============================================================
+# LEVEL SYSTEM - 60 SECOND TOTAL GAME
+# ============================================================
+
+TOTAL_GAME_TIME = 60.0
 
 LEVELS = {
     1: {
-        "name": "ROOKIE GUARD",
-        "duration": 30,
-        "max_threats": 3,
-        "spawn_rate": 0.02,
-        "threat_speed": (2.5, 3.5),
-        "grenade_enabled": False,
-        "grenade_interval": None,
-        "grenade_speed": None,
-        "boss_attack": False,
-        "description": "Learn the basics",
-        "color": (94, 234, 212),
-        "required_score": 50
-    },
-    2: {
-        "name": "SKILLED DEFENDER",
-        "duration": 35,
-        "max_threats": 4,
-        "spawn_rate": 0.03,
-        "threat_speed": (3.0, 4.5),
-        "grenade_enabled": True,
-        "grenade_interval": 15.0,
-        "grenade_speed": (2.5, 3.0),
-        "boss_attack": False,
-        "description": "Grenades incoming!",
-        "color": (87, 242, 135),
-        "required_score": 100
-    },
-    3: {
-        "name": "EXPERT PROTECTOR",
-        "duration": 40,
+        "name": "WAVE 1",
+        "duration": 15,
         "max_threats": 5,
         "spawn_rate": 0.04,
-        "threat_speed": (3.5, 5.5),
-        "grenade_enabled": True,
-        "grenade_interval": 10.0,
-        "grenade_speed": (2.8, 3.5),
-        "boss_attack": False,
-        "description": "Chaos intensifies",
-        "color": (255, 154, 88),
-        "required_score": 150
+        "threat_speed": (4.0, 5.0),
+        "allowed_threats": ["threat"],
+        "threat_intervals": {
+            "threat": 0.5,
+        },
+        "targeting_accuracy": 0.6,
+        "description": "Warm up!",
+        "color": (94, 234, 212)
+    },
+    2: {
+        "name": "WAVE 2",
+        "duration": 15,
+        "max_threats": 7,
+        "spawn_rate": 0.06,
+        "threat_speed": (5.0, 6.5),
+        "allowed_threats": ["threat", "rocket"],
+        "threat_intervals": {
+            "threat": 0.8,
+            "rocket": 8.0
+        },
+        "targeting_accuracy": 0.85,
+        "description": "Rockets incoming!",
+        "color": (87, 242, 135)
+    },
+    3: {
+        "name": "WAVE 3",
+        "duration": 15,
+        "max_threats": 10,
+        "spawn_rate": 0.08,
+        "threat_speed": (6.0, 8.0),
+        "allowed_threats": ["threat", "rocket", "grenade"],
+        "threat_intervals": {
+            "threat": 0.7,
+            "rocket": 5.0,
+            "grenade": 10.0
+        },
+        "targeting_accuracy": 0.85,
+        "description": "Chaos mode!",
+        "color": (255, 154, 88)
     },
     4: {
-        "name": "FINAL STAND",
-        "duration": 45,
-        "max_threats": 6,
-        "spawn_rate": 0.05,
-        "threat_speed": (4.0, 6.0),
-        "grenade_enabled": True,
-        "grenade_interval": 8.0,
-        "grenade_speed": (3.0, 4.0),
-        "boss_attack": True,
-        "description": "SURVIVE THE ONSLAUGHT!",
-        "color": (239, 68, 68),
-        "required_score": 200
+        "name": "FINAL WAVE",
+        "duration": 15,
+        "max_threats": 15,
+        "spawn_rate": 0.12,
+        "threat_speed": (7.0, 10.0),
+        "allowed_threats": ["threat", "rocket", "grenade", "nuke"],
+        "threat_intervals": {
+            "threat": 0.6,
+            "rocket": 3.0,
+            "grenade": 6.0,
+            "nuke": 12.0
+        },
+        "targeting_accuracy": 0.99,
+        "description": "HELL UNLEASHED!",
+        "color": (239, 68, 68)
     }
 }
 
@@ -152,9 +206,7 @@ LEVELS = {
 # ============================================================
 
 CHEST_IMAGE_PATH = "assets/chest.png"
-THREAT_IMAGE_PATH = "assets/threat.png"
-GRENADE_IMAGE_PATH = "assets/grenade.png"
-BACKGROUND_IMAGE_PATH = "assets/background.png"
+BACKGROUND_IMAGE_PATH = "assets/background.jpeg"
 BACKGROUND_MUSIC_PATH = "assets/background_music.mp3"
 HIT_SOUND_PATH = "assets/hit_sound.wav"
 LEVEL_UP_SOUND_PATH = "assets/level_up.wav"
@@ -163,8 +215,7 @@ LEVEL_UP_SOUND_PATH = "assets/level_up.wav"
 # GAME CONFIGURATION
 # ============================================================
 
-TREASURE_SIZE, THREAT_SIZE = 90, 60
-GRENADE_SIZE = 90
+TREASURE_SIZE = 90
 BASE_BORDER_RADIUS, BASE_GRAB_RADIUS = 70, 180
 MAX_LIVES = 3.0
 HIT_FLASH_DURATION = 0.4
@@ -193,6 +244,7 @@ UI_ACCENT = (94, 234, 212)
 SUCCESS = (34, 197, 94)
 DANGER = (239, 68, 68)
 WARNING = (245, 158, 11)
+PURPLE = (200, 0, 255)
 
 # ============================================================
 # MEDIAPIPE SETUP
@@ -202,8 +254,8 @@ options_hand = vision.HandLandmarkerOptions(
     base_options=python.BaseOptions(model_asset_path=MODEL_PATH_HAND),
     running_mode=vision.RunningMode.VIDEO,
     num_hands=1,
-    min_hand_detection_confidence=0.3,  # Lowered from 0.4
-    min_tracking_confidence=0.3          # Lowered from 0.4
+    min_hand_detection_confidence=0.3,
+    min_tracking_confidence=0.3
 )
 landmarker_hand = vision.HandLandmarker.create_from_options(options_hand)
 
@@ -211,28 +263,38 @@ pygame.mixer.init()
 clock = pygame.time.Clock()
 
 # ============================================================
-# FONTS
+# FONTS - Gaming Style
 # ============================================================
 
-try:
-    title_font = pygame.font.Font(None, 180)
-    big_font = pygame.font.Font(None, 120)
-    medium_font = pygame.font.Font(None, 70)
-    font = pygame.font.Font(None, 45)
-    small_font = pygame.font.Font(None, 32)
-except:
-    title_font = pygame.font.Font(None, 150)
-    big_font = pygame.font.Font(None, 100)
-    medium_font = pygame.font.Font(None, 60)
-    font = pygame.font.SysFont(None, 35)
-    small_font = pygame.font.Font(None, 28)
+# Try to use gaming-style fonts, fallback to bold system fonts
+def get_gaming_font(size):
+    """Try gaming fonts, fallback to bold"""
+    # Try gaming-style font names
+    gaming_fonts = ['Arial Black', 'Impact', 'Bahnschrift', 'Tahoma Bold', 'Verdana Bold']
+    
+    for font_name in gaming_fonts:
+        try:
+            return pygame.font.SysFont(font_name, size, bold=True)
+        except:
+            pass
+    
+    # Final fallback
+    try:
+        return pygame.font.Font(None, size)
+    except:
+        return pygame.font.SysFont('Arial', size, bold=True)
+
+title_font = get_gaming_font(100)  # Reduced from 160
+big_font = get_gaming_font(70)     # Reduced from 100
+medium_font = get_gaming_font(45)  # Reduced from 60
+font = get_gaming_font(32)         # Reduced from 40
+small_font = get_gaming_font(22)   # Reduced from 26
 
 # ============================================================
 # PARTICLE SYSTEM
 # ============================================================
 
 class ParticleSystem:
-    """Pre-rendered particle system for performance"""
     def __init__(self):
         self.particles = []
         self.particle_surfaces = {}
@@ -280,7 +342,6 @@ def load_sound(path):
 hit_sound = load_sound(HIT_SOUND_PATH)
 level_up_sound = load_sound(LEVEL_UP_SOUND_PATH)
 
-# Load sound variations
 hit_sounds = []
 for i in range(1, 4):
     path = f"assets/sounds/hit{i}.wav"
@@ -307,17 +368,33 @@ for i in range(1, 4):
             pass
 
 def load_scale(path, size, fallback_color):
+    # Handle both integer and tuple sizes
+    if isinstance(size, tuple):
+        size_tuple = size
+        size_int = size[0]
+    else:
+        size_tuple = (size, size)
+        size_int = size
+    
     try:
         img = pygame.image.load(path).convert_alpha()
-        return pygame.transform.smoothscale(img, size)
+        return pygame.transform.smoothscale(img, size_tuple)
     except:
-        surf = pygame.Surface(size)
-        surf.fill(fallback_color)
+        # Create fallback surface with proper dimensions
+        surf = pygame.Surface(size_tuple, pygame.SRCALPHA)
+        pygame.draw.circle(surf, fallback_color, (size_int//2, size_int//2), size_int//2)
         return surf
 
-chest_img = load_scale(CHEST_IMAGE_PATH, (TREASURE_SIZE, TREASURE_SIZE), YELLOW)
-threat_img = load_scale(THREAT_IMAGE_PATH, (THREAT_SIZE, THREAT_SIZE), RED)
-grenade_img = load_scale(GRENADE_IMAGE_PATH, (GRENADE_SIZE, GRENADE_SIZE), ORANGE)
+chest_img = load_scale(CHEST_IMAGE_PATH, TREASURE_SIZE, YELLOW)
+
+# Load all threat images
+threat_images = {}
+for threat_type, config in THREAT_TYPES.items():
+    threat_images[threat_type] = load_scale(
+        config["image_path"],
+        (config["size"], config["size"]),
+        config["fallback_color"]
+    )
 
 background_img = None
 try:
@@ -365,7 +442,7 @@ hand_tracking_lost = True
 threats = []
 chest_state = "IDLE"
 grab_start_time = None
-last_grenade_time = None
+last_threat_spawn = {}
 game_over = False
 win = False
 lives = MAX_LIVES
@@ -373,48 +450,36 @@ hit_anim_timer = 0.0
 score = 0
 threats_dodged = 0
 
-# Combo system
 combo = 0
 combo_timer = 0
 COMBO_TIMEOUT = 90
 combo_flash_timer = 0
 
-# Score popups
 score_popups = []
-
-# Particle system
 particles = ParticleSystem()
-
-# Heart shake
 heart_shake_timer = 0
 
-# Boss warning
-boss_warning_timer = 0
-boss_warned = False
-
-# Level flash
 level_flash_timer = 0
 level_flash_color = (94, 234, 212)
 
-# Level system state
 current_level = 1
 level_start_time = None
-level_up_notification_timer = 0  # Show "LEVEL 2" briefly
+level_up_notification_timer = 0
 level_up_notification_level = 0
 total_score = 0
-level_scores = {1: 0, 2: 0, 3: 0, 4: 0}
 
-# Boss attack state
-boss_attack_active = False
-boss_attack_start = None
-BOSS_ATTACK_DURATION = 10.0
+# Hand tracking and pause state
+game_paused = False
+pause_message_timer = 0
+hand_was_detected = False
+restart_cooldown = 0
+RESTART_COOLDOWN_TIME = 12.0  # 12 seconds before restart allowed
 
 # ============================================================
 # HELPER FUNCTIONS
 # ============================================================
 
 def play_random_sound(sound_list):
-    """Play random sound from list"""
     if sound_list:
         random.choice(sound_list).play()
 
@@ -449,67 +514,82 @@ def apply_camera_zoom(frame):
     
     return zoomed
 
-def spawn_threat(is_grenade=False, chest_position=None):
-    """Spawn threat with level-specific parameters"""
+def spawn_threat(threat_type, chest_position=None):
+    """Spawn specific threat type"""
     level_config = LEVELS[current_level]
+    threat_config = THREAT_TYPES[threat_type]
     
-    side = random.randint(0, 3)
-    
-    if side == 0:
-        start_x = random.randint(100, WIDTH - 100)
-        start_y = -100
-    elif side == 1:
-        start_x = WIDTH + 100
+    # Rocket from LEFT, Nuke from RIGHT
+    if threat_type == "rocket":
+        start_x = -100  # LEFT SIDE
         start_y = random.randint(100, HEIGHT - 100)
-    elif side == 2:
-        start_x = random.randint(100, WIDTH - 100)
-        start_y = HEIGHT + 100
+    elif threat_type == "nuke":
+        start_x = WIDTH + 100  # RIGHT SIDE
+        start_y = random.randint(100, HEIGHT - 100)
     else:
-        start_x = -100
-        start_y = random.randint(100, HEIGHT - 100)
+        # Other threats from any side
+        side = random.randint(0, 3)
+        
+        if side == 0:
+            start_x = random.randint(100, WIDTH - 100)
+            start_y = -100
+        elif side == 1:
+            start_x = WIDTH + 100
+            start_y = random.randint(100, HEIGHT - 100)
+        elif side == 2:
+            start_x = random.randint(100, WIDTH - 100)
+            start_y = HEIGHT + 100
+        else:
+            start_x = -100
+            start_y = random.randint(100, HEIGHT - 100)
     
     start_pos = np.array([start_x, start_y], dtype=float)
     
+    # ALWAYS target towards chest (current position)
     if chest_position is not None:
-        to_chest = chest_position - start_pos
-        to_chest_normalized = to_chest / np.linalg.norm(to_chest)
-        
-        if boss_attack_active:
-            accuracy = 0.95
-        elif is_grenade:
-            accuracy = random.uniform(0.7, 0.85)
-        else:
-            accuracy = random.uniform(0.5, 0.75)
-        
-        perpendicular = np.array([-to_chest_normalized[1], to_chest_normalized[0]])
-        random_offset = perpendicular * random.uniform(-0.8, 0.8)
-        
-        direction = to_chest_normalized * accuracy + random_offset * (1 - accuracy)
-        direction = direction / np.linalg.norm(direction)
+        target = chest_position
     else:
-        to_center = np.array([WIDTH // 2, HEIGHT // 2], dtype=float) - start_pos
-        direction = to_center / np.linalg.norm(to_center)
+        target = np.array([WIDTH // 2, HEIGHT // 2], dtype=float)
     
-    if is_grenade:
-        speed_range = level_config["grenade_speed"]
-        speed = random.uniform(speed_range[0], speed_range[1])
-    else:
-        speed_range = level_config["threat_speed"]
-        speed = random.uniform(speed_range[0], speed_range[1])
-        
-        if boss_attack_active:
-            speed *= 1.5
+    to_target = target - start_pos
+    to_target_normalized = to_target / np.linalg.norm(to_target)
     
+    accuracy = level_config["targeting_accuracy"]
+    
+    # Add slight randomness based on accuracy
+    perpendicular = np.array([-to_target_normalized[1], to_target_normalized[0]])
+    random_offset = perpendicular * random.uniform(-0.3, 0.3) * (1 - accuracy)
+    
+    direction = to_target_normalized + random_offset
+    direction = direction / np.linalg.norm(direction)
+    
+    # Calculate angle to point towards target (for rockets/nukes)
+    angle_to_target = math.degrees(math.atan2(direction[1], direction[0]))
+    
+    speed_range = level_config["threat_speed"]
+    base_speed = random.uniform(speed_range[0], speed_range[1])
+    
+    # Speed multiplier based on threat type
+    if threat_type == "threat":
+        speed_mult = 1.0
+    elif threat_type == "rocket":
+        speed_mult = 1.3
+    elif threat_type == "grenade":
+        speed_mult = 0.9
+    elif threat_type == "nuke":
+        speed_mult = 1.5
+    
+    speed = base_speed * speed_mult
     vel = direction * speed
     
     return {
         "id": time.time() + random.random(),
         "pos": start_pos,
         "vel": vel,
-        "angle": 0,
-        "rotation_speed": random.uniform(-3, 3),
+        "angle": angle_to_target,  # Point towards target
+        "rotation_speed": 0,  # No spinning - stay pointed
         "lifetime": 0.0,
-        "type": "grenade" if is_grenade else "regular"
+        "type": threat_type
     }
 
 def update_hand_physics(raw_pos, current_smooth, current_vel):
@@ -529,47 +609,15 @@ def update_hand_physics(raw_pos, current_smooth, current_vel):
         return smooth, vel
     return current_smooth + current_vel, current_vel * 0.85
 
-def draw_level_complete(level_num, level_score):
-    """Victory screen for completing a level"""
-    overlay = pygame.Surface((WIDTH, HEIGHT))
-    overlay.set_alpha(230)
-    overlay.fill(DARK_BG)
-    screen.blit(overlay, (0, 0))
-    
-    complete_text = title_font.render("LEVEL COMPLETE!", True, GOLD)
-    for i in range(3):
-        glow = title_font.render("LEVEL COMPLETE!", True, (255, 215, 0, 100 - i*30))
-        glow_rect = glow.get_rect(center=(WIDTH//2, HEIGHT//4 + i*3))
-        screen.blit(glow, glow_rect)
-    
-    complete_rect = complete_text.get_rect(center=(WIDTH//2, HEIGHT//4))
-    screen.blit(complete_text, complete_rect)
-    
-    stars = "⭐" * min(3, max(1, level_score // 50))
-    stars_surf = title_font.render(stars, True, GOLD)
-    stars_rect = stars_surf.get_rect(center=(WIDTH//2, HEIGHT//2 - 50))
-    screen.blit(stars_surf, stars_rect)
-    
-    score_surf = big_font.render(f"Score: {level_score}", True, WHITE)
-    score_rect = score_surf.get_rect(center=(WIDTH//2, HEIGHT//2 + 70))
-    screen.blit(score_surf, score_rect)
-    
-    if level_num < 4:
-        next_pulse = abs(math.sin(time.time() * 2)) * 0.3 + 0.7
-        next_color = tuple(int(c * next_pulse) for c in UI_ACCENT)
-        next_surf = medium_font.render("Press SPACE for Next Level", True, next_color)
-        next_rect = next_surf.get_rect(center=(WIDTH//2, HEIGHT - 150))
-        screen.blit(next_surf, next_rect)
-
 def reset_game():
     global treasure_pos, hand_smooth, hand_velocity, hand_grip, hand_tracking_lost
     global threats, chest_state, grab_start_time, game_over, win, lives, hit_anim_timer
-    global score, threats_dodged, last_grenade_time
+    global score, threats_dodged, last_threat_spawn
     global current_level, level_start_time, total_score
     global combo, combo_timer, combo_flash_timer, score_popups
-    global heart_shake_timer, boss_warning_timer, boss_warned
-    global level_flash_timer, level_flash_color, boss_attack_active, boss_attack_start
+    global heart_shake_timer, level_flash_timer, level_flash_color
     global level_up_notification_timer, level_up_notification_level
+    global game_paused, pause_message_timer, hand_was_detected, restart_cooldown
     
     treasure_pos = np.array([WIDTH // 2, HEIGHT // 2], dtype=float)
     hand_smooth = np.array([WIDTH // 2, HEIGHT // 2], dtype=float)
@@ -580,7 +628,7 @@ def reset_game():
     threats = []
     chest_state = "IDLE"
     grab_start_time = None
-    last_grenade_time = None
+    last_threat_spawn = {}
     game_over = False
     win = False
     lives = MAX_LIVES
@@ -593,8 +641,6 @@ def reset_game():
     combo_flash_timer = 0
     score_popups.clear()
     heart_shake_timer = 0
-    boss_warning_timer = 0
-    boss_warned = False
     level_flash_timer = 0
     level_flash_color = (94, 234, 212)
     
@@ -602,43 +648,37 @@ def reset_game():
     level_start_time = None
     level_up_notification_timer = 0
     level_up_notification_level = 0
-    boss_attack_active = False
-    boss_attack_start = None
     total_score = 0
-    level_scores.clear()
-    for i in range(1, 5):
-        level_scores[i] = 0
+    
+    game_paused = False
+    pause_message_timer = 0
+    hand_was_detected = False
+    restart_cooldown = 0
 
 def advance_to_next_level():
-    global current_level, level_start_time
-    global grab_start_time, chest_state, threats, last_grenade_time
-    global boss_attack_active, boss_attack_start, score, threats_dodged
-    global combo, combo_timer, boss_warned
-    global level_up_notification_timer, level_up_notification_level, game_over, win
+    global current_level, level_start_time, grab_start_time
+    global threats, last_threat_spawn, score, threats_dodged
+    global combo, combo_timer, game_over, win
+    global level_up_notification_timer, level_up_notification_level
+    global level_flash_timer, level_flash_color
     
-    level_scores[current_level] = score
     current_level += 1
     
-    # Show level up notification
-    level_up_notification_timer = 180  # 3 seconds
+    # SEAMLESS - no interruption!
+    level_up_notification_timer = 120  # 2 seconds
     level_up_notification_level = current_level
     
-    # Don't reset game - continue seamlessly
-    grab_start_time = current_time  # Continue from current time
+    # Continue from current time
     level_start_time = current_time
     threats.clear()
-    last_grenade_time = None
-    boss_attack_active = False
-    boss_attack_start = None
+    last_threat_spawn.clear()
     score = 0
     threats_dodged = 0
     combo = 0
     combo_timer = 0
-    boss_warned = False
     game_over = False
     win = False
     
-    # Level flash
     level_flash_timer = 60
     level_flash_color = LEVELS[current_level]["color"]
     
@@ -647,26 +687,6 @@ def advance_to_next_level():
             level_up_sound.play()
         except:
             pass
-
-def draw_text_with_shadow(surface, text, font, color, x, y, shadow_offset=3):
-    shadow = font.render(text, True, (0, 0, 0))
-    shadow.set_alpha(100)
-    surface.blit(shadow, (x + shadow_offset, y + shadow_offset))
-    text_surface = font.render(text, True, color)
-    surface.blit(text_surface, (x, y))
-    return text_surface.get_rect(topleft=(x, y))
-
-def draw_ui_panel(surface, x, y, width, height, bg_color=UI_BG, border_color=UI_BORDER, alpha=200):
-    panel = pygame.Surface((width, height))
-    panel.set_alpha(alpha)
-    panel.fill(bg_color)
-    surface.blit(panel, (x, y))
-    pygame.draw.rect(surface, border_color, (x, y, width, height), 2, border_radius=8)
-
-def draw_pulse_circle(surface, center, radius, color, pulse_time):
-    pulse = abs(math.sin(pulse_time * 3)) * 0.3 + 0.7
-    actual_radius = int(radius * pulse)
-    pygame.draw.circle(surface, color, center, actual_radius, 4)
 
 def get_scaled_background():
     global background_img
@@ -747,6 +767,17 @@ try:
         
         if raw_pos is None:
             hand_tracking_lost = True
+        else:
+            hand_was_detected = True
+        
+        # Pause game if hand lost during gameplay
+        if grab_start_time and not game_over:
+            if hand_tracking_lost and hand_was_detected:
+                if not game_paused:
+                    game_paused = True
+                    pause_message_timer = 180
+            elif not hand_tracking_lost and game_paused:
+                game_paused = False
         
         hand_smooth, hand_velocity = update_hand_physics(raw_pos, hand_smooth, hand_velocity)
         
@@ -755,7 +786,7 @@ try:
         else:
             screen.fill(DARK_BG)
         
-        # Level flash effect
+        # Level flash
         if level_flash_timer > 0 and grab_start_time:
             alpha = int(150 * (level_flash_timer / 60))
             flash_surf = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -792,15 +823,19 @@ try:
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
-                elif event.key == pygame.K_SPACE:
-                    if game_over and win and current_level < 4:
-                        advance_to_next_level()
-                    elif game_over:
-                        reset_game()
+        
+        # Fist to restart on game over (with cooldown)
+        if game_over:
+            if restart_cooldown > 0:
+                restart_cooldown = max(0, restart_cooldown - (1.0 / 60.0))
+            
+            if restart_cooldown <= 0 and not hand_tracking_lost:
+                if hand_grip < P_GRAB_THRESH:  # Closed fist
+                    reset_game()
         
         level_config = LEVELS[current_level]
         
-        if not game_over:
+        if not game_over and not game_paused:
             # Update timers
             if combo_timer > 0:
                 combo_timer -= 1
@@ -813,9 +848,6 @@ try:
             if heart_shake_timer > 0:
                 heart_shake_timer -= 1
             
-            if boss_warning_timer > 0:
-                boss_warning_timer -= 1
-            
             if level_flash_timer > 0:
                 level_flash_timer -= 1
             
@@ -824,41 +856,24 @@ try:
             
             # Spawn threats
             if grab_start_time:
+                # Regular spawning
                 max_threats = level_config["max_threats"]
-                
-                if boss_attack_active:
-                    max_threats *= 2
-                
                 spawn_rate = level_config["spawn_rate"]
+                
                 if len(threats) < max_threats and random.random() < spawn_rate:
-                    threats.append(spawn_threat(is_grenade=False, chest_position=treasure_pos))
+                    # Pick random allowed threat
+                    threat_type = random.choice(level_config["allowed_threats"])
+                    threats.append(spawn_threat(threat_type, treasure_pos))
                 
-                if level_config["grenade_enabled"]:
-                    if last_grenade_time is None:
-                        last_grenade_time = grab_start_time
+                # Interval-based special threats
+                for threat_type, interval in level_config["threat_intervals"].items():
+                    if threat_type not in last_threat_spawn:
+                        last_threat_spawn[threat_type] = grab_start_time
                     
-                    grenade_interval = level_config["grenade_interval"]
-                    if boss_attack_active:
-                        grenade_interval = 5.0
-                    
-                    if (current_time - last_grenade_time) >= grenade_interval:
-                        threats.append(spawn_threat(is_grenade=True, chest_position=treasure_pos))
-                        last_grenade_time = current_time
-                
-                # Boss warning and activation
-                if level_config["boss_attack"]:
-                    time_remaining = level_config["duration"] - (current_time - grab_start_time)
-                    
-                    if 10 < time_remaining <= 15 and not boss_warned:
-                        boss_warned = True
-                        boss_warning_timer = 180
-                    
-                    if time_remaining <= BOSS_ATTACK_DURATION and not boss_attack_active:
-                        boss_attack_active = True
-                        boss_attack_start = current_time
-                        
-                        for threat in threats:
-                            threat["vel"] *= 1.5
+                    if (current_time - last_threat_spawn[threat_type]) >= interval:
+                        if threat_type in level_config["allowed_threats"]:
+                            threats.append(spawn_threat(threat_type, treasure_pos))
+                            last_threat_spawn[threat_type] = current_time
             
             # Chest control
             is_holding = hand_grip < P_GRAB_THRESH and not hand_tracking_lost
@@ -879,6 +894,21 @@ try:
                 else:
                     chest_state = "IDLE"
             
+            # Check for AUTO level advancement
+            if grab_start_time and level_start_time:
+                time_in_level = current_time - level_start_time
+                
+                # AUTO-ADVANCE when level duration complete
+                if time_in_level >= level_config["duration"] and current_level < 4:
+                    advance_to_next_level()
+                
+                # Check total game time for WIN
+                total_game_elapsed = current_time - grab_start_time
+                if total_game_elapsed >= TOTAL_GAME_TIME:
+                    game_over = True
+                    win = True
+                    restart_cooldown = RESTART_COOLDOWN_TIME
+            
             # Update threats
             for i in range(len(threats) - 1, -1, -1):
                 t = threats[i]
@@ -894,17 +924,24 @@ try:
                     combo_timer = COMBO_TIMEOUT
                     combo_flash_timer = 30
                     
-                    if t["type"] == "regular":
-                        base_points = 10
-                        particle_color = (0, 255, 100)
-                    else:
-                        base_points = 25
-                        particle_color = (255, 200, 0)
+                    threat_config = THREAT_TYPES[t["type"]]
+                    base_points = threat_config["points"]
+                    
+                    # Particle color based on threat
+                    if t["type"] == "threat":
+                        particle_color = (100, 255, 100)
+                    elif t["type"] == "rocket":
+                        particle_color = (255, 200, 100)
+                    elif t["type"] == "grenade":
+                        particle_color = (255, 215, 0)
+                    else:  # nuke
+                        particle_color = (255, 100, 255)
                     
                     combo_bonus = combo * 2 if combo > 1 else 0
                     total_points = base_points + combo_bonus
                     
                     score += total_points
+                    total_score += total_points
                     threats_dodged += 1
                     
                     particles.add_particles(t["pos"][0], t["pos"][1], particle_color, 15)
@@ -932,39 +969,39 @@ try:
                     continue
                 
                 # Collision
-                collision_radius = BASE_BORDER_RADIUS + (35 if t["type"] == "grenade" else 20)
+                threat_config = THREAT_TYPES[t["type"]]
+                collision_radius = BASE_BORDER_RADIUS + threat_config["collision_radius"]
+                
                 if np.linalg.norm(t["pos"] - treasure_pos) < collision_radius:
-                    if t["type"] == "grenade":
-                        lives = 0
-                        threats.pop(i)
-                        hit_anim_timer = current_time
-                        
-                        combo = 0
-                        combo_timer = 0
-                        
-                        particles.add_particles(t["pos"][0], t["pos"][1], (255, 100, 0), 30)
-                        heart_shake_timer = 30
-                        
-                        play_random_sound(hit_sounds)
-                        
+                    damage = threat_config["damage"]
+                    
+                    lives -= damage
+                    threats.pop(i)
+                    hit_anim_timer = current_time
+                    
+                    combo = 0
+                    combo_timer = 0
+                    
+                    # Explosion color based on damage
+                    if damage >= 3.0:
+                        particle_color = (255, 100, 255)
+                        particle_count = 40
+                    elif damage >= 1.0:
+                        particle_color = (255, 150, 0)
+                        particle_count = 30
+                    else:
+                        particle_color = (255, 0, 0)
+                        particle_count = 20
+                    
+                    particles.add_particles(t["pos"][0], t["pos"][1], particle_color, particle_count)
+                    heart_shake_timer = 30
+                    
+                    play_random_sound(hit_sounds)
+                    
+                    if lives <= 0:
                         game_over = True
                         win = False
-                    else:
-                        lives -= 0.5
-                        threats.pop(i)
-                        hit_anim_timer = current_time
-                        
-                        combo = 0
-                        combo_timer = 0
-                        
-                        particles.add_particles(t["pos"][0], t["pos"][1], (255, 0, 0), 20)
-                        heart_shake_timer = 30
-                        
-                        play_random_sound(hit_sounds)
-                        
-                        if lives <= 0:
-                            game_over = True
-                            win = False
+                        restart_cooldown = RESTART_COOLDOWN_TIME
             
             # Update score popups
             for popup in score_popups[:]:
@@ -973,11 +1010,6 @@ try:
                 
                 if popup["lifetime"] <= 0:
                     score_popups.remove(popup)
-            
-            # Level completion
-            if grab_start_time and (current_time - grab_start_time) >= level_config["duration"]:
-                game_over = True
-                win = True
         
         # Draw game
         disp_pos = treasure_pos.copy()
@@ -1002,21 +1034,60 @@ try:
         else:
             if grab_start_time:
                 c_col = SUCCESS
-                draw_pulse_circle(screen, disp_pos.astype(int), BASE_BORDER_RADIUS + 5, SUCCESS, current_time)
+                pulse = abs(math.sin(current_time * 3)) * 0.3 + 0.7
+                actual_radius = int((BASE_BORDER_RADIUS + 5) * pulse)
+                pygame.draw.circle(screen, SUCCESS, disp_pos.astype(int), actual_radius, 4)
             else:
                 c_col = GOLD
-                draw_pulse_circle(screen, disp_pos.astype(int), BASE_BORDER_RADIUS + 8, GOLD, current_time * 0.5)
+                pulse = abs(math.sin(current_time * 1.5)) * 0.3 + 0.7
+                actual_radius = int((BASE_BORDER_RADIUS + 8) * pulse)
+                pygame.draw.circle(screen, GOLD, disp_pos.astype(int), actual_radius, 4)
         
         pygame.draw.circle(screen, c_col, disp_pos.astype(int), BASE_BORDER_RADIUS, 5)
         pygame.draw.circle(screen, c_col, disp_pos.astype(int), BASE_BORDER_RADIUS - 5, 2)
         screen.blit(chest_img, (int(disp_pos[0]-45), int(disp_pos[1]-45)))
         
+        # Initial instruction (before game starts)
+        if not grab_start_time and not game_over:
+            pulse = abs(math.sin(current_time * 2)) * 0.3 + 0.7
+            instruction_color = tuple(int(c * pulse) for c in GOLD)
+            
+            instruction_text = big_font.render("👊 CLOSE YOUR FIST", True, instruction_color)
+            instruction_rect = instruction_text.get_rect(center=(WIDTH//2, HEIGHT//2 - 100))
+            screen.blit(instruction_text, instruction_rect)
+            
+            grab_text = medium_font.render("GRAB THE CHEST TO START!", True, WHITE)
+            grab_rect = grab_text.get_rect(center=(WIDTH//2, HEIGHT//2 - 30))
+            screen.blit(grab_text, grab_rect)
+            
+            # Show damage legend on start screen
+            legend_x = WIDTH - 320
+            legend_y = HEIGHT - 140
+            
+            legend_bg = pygame.Surface((300, 120))
+            legend_bg.set_alpha(180)
+            legend_bg.fill(UI_BG)
+            screen.blit(legend_bg, (legend_x, legend_y))
+            pygame.draw.rect(screen, UI_BORDER, (legend_x, legend_y, 300, 120), 2, border_radius=5)
+            
+            legend_title = small_font.render("THREAT DAMAGE:", True, WHITE)
+            screen.blit(legend_title, (legend_x + 10, legend_y + 5))
+            
+            threats_info = [
+                ("🔴 Threat: -0.5", (255, 100, 100)),
+                ("🚀 Rocket: -1.0", (255, 150, 50)),
+                ("💣 Grenade: DEATH", (255, 200, 0)),
+                ("☢️  Nuke: DEATH", (200, 0, 255))
+            ]
+            
+            for i, (text, color) in enumerate(threats_info):
+                info_text = small_font.render(text, True, color)
+                screen.blit(info_text, (legend_x + 10, legend_y + 30 + i * 22))
+        
         # Draw threats
         for t in threats:
-            rot = pygame.transform.rotate(
-                grenade_img if t["type"] == "grenade" else threat_img, 
-                t.get("angle", 0)
-            )
+            threat_img = threat_images[t["type"]]
+            rot = pygame.transform.rotate(threat_img, t.get("angle", 0))
             screen.blit(rot, rot.get_rect(center=(int(t["pos"][0]), int(t["pos"][1]))).topleft)
         
         # Particles
@@ -1037,15 +1108,16 @@ try:
         
         # UI during gameplay
         if grab_start_time and not game_over:
-            time_elapsed = current_time - grab_start_time
-            time_remaining = max(0, int(level_config["duration"] - time_elapsed))
+            total_elapsed = current_time - grab_start_time
+            total_remaining = max(0, int(TOTAL_GAME_TIME - total_elapsed))
             
             stats_x = 40
             stats_y = 40
             level_color = level_config["color"]
             
-            level_surf = big_font.render(f"LEVEL {current_level}", True, level_color)
-            screen.blit(level_surf, (stats_x, stats_y))
+            # Wave indicator
+            wave_surf = big_font.render(f"WAVE {current_level}/4", True, level_color)
+            screen.blit(wave_surf, (stats_x, stats_y))
             
             # Hearts with pulse and shake
             full_hearts = int(lives)
@@ -1080,12 +1152,38 @@ try:
                 
                 screen.blit(heart_surf, (heart_x + i * 55, heart_y))
             
-            timer_color = DANGER if time_remaining <= 10 else WARNING if time_remaining <= 15 else CYAN
-            timer_surf = big_font.render(f"⏱️ {time_remaining}s", True, timer_color)
+            # Total game timer (60s)
+            timer_color = DANGER if total_remaining <= 10 else WARNING if total_remaining <= 20 else CYAN
+            timer_surf = big_font.render(f"⏱️ {total_remaining}s", True, timer_color)
             screen.blit(timer_surf, (stats_x, stats_y + 160))
             
-            score_surf = big_font.render(f"⭐ {score}", True, GOLD)
+            # Score
+            score_surf = big_font.render(f"⭐ {total_score}", True, GOLD)
             screen.blit(score_surf, (stats_x, stats_y + 240))
+            
+            # Threat damage legend (bottom right)
+            legend_x = WIDTH - 320
+            legend_y = HEIGHT - 140
+            
+            legend_bg = pygame.Surface((300, 120))
+            legend_bg.set_alpha(180)
+            legend_bg.fill(UI_BG)
+            screen.blit(legend_bg, (legend_x, legend_y))
+            pygame.draw.rect(screen, UI_BORDER, (legend_x, legend_y, 300, 120), 2, border_radius=5)
+            
+            legend_title = small_font.render("THREAT DAMAGE:", True, WHITE)
+            screen.blit(legend_title, (legend_x + 10, legend_y + 5))
+            
+            threats_info = [
+                ("🔴 Threat: -0.5", (255, 100, 100)),
+                ("🚀 Rocket: -1.0", (255, 150, 50)),
+                ("💣 Grenade: DEATH", (255, 200, 0)),
+                ("☢️  Nuke: DEATH", (200, 0, 255))
+            ]
+            
+            for i, (text, color) in enumerate(threats_info):
+                info_text = small_font.render(text, True, color)
+                screen.blit(info_text, (legend_x + 10, legend_y + 30 + i * 22))
             
             # Combo display
             if combo > 1:
@@ -1105,65 +1203,94 @@ try:
                     screen.blit(glow, glow_rect)
                 
                 screen.blit(combo_text, combo_rect)
+        
+        # Pause overlay (when hand lost)
+        if game_paused and pause_message_timer > 0:
+            pause_message_timer -= 1
             
-            # Boss attack warning
-            if boss_attack_active:
-                boss_pulse = abs(math.sin(current_time * 8)) * 0.5 + 0.5
-                boss_color = tuple(int(c * boss_pulse) for c in DANGER)
-                boss_text = title_font.render("FINAL WAVE!", True, boss_color)
-                boss_rect = boss_text.get_rect(center=(WIDTH//2, 100))
-                
-                border_alpha = int(180 * boss_pulse)
-                border_surf = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-                pygame.draw.rect(border_surf, (220, 0, 0, border_alpha), 
-                               (0, 0, WIDTH, HEIGHT), 20)
-                screen.blit(border_surf, (0, 0))
-                
-                for i in range(5):
-                    glow = title_font.render("FINAL WAVE!", True, DANGER)
-                    glow.set_alpha(100 - i*20)
-                    glow_rect = glow.get_rect(center=(WIDTH//2 + i*3, 100 + i*3))
-                    screen.blit(glow, glow_rect)
-                
-                screen.blit(boss_text, boss_rect)
+            overlay = pygame.Surface((WIDTH, HEIGHT))
+            overlay.set_alpha(200)
+            overlay.fill((0, 0, 0))
+            screen.blit(overlay, (0, 0))
             
-            elif boss_warning_timer > 0:
-                pulse = abs(math.sin(current_time * 4)) * 0.4 + 0.6
-                warning_color = (int(255 * pulse), int(100 * pulse), 0)
-                
-                warning_text = big_font.render("⚠️ FINAL WAVE APPROACHING ⚠️", True, warning_color)
-                warning_rect = warning_text.get_rect(center=(WIDTH//2, 200))
-                screen.blit(warning_text, warning_rect)
+            pulse = abs(math.sin(current_time * 3)) * 0.3 + 0.7
+            pause_color = tuple(int(c * pulse) for c in WARNING)
+            
+            pause_text = title_font.render("⚠️ PAUSED ⚠️", True, pause_color)
+            pause_rect = pause_text.get_rect(center=(WIDTH//2, HEIGHT//2 - 50))
+            screen.blit(pause_text, pause_rect)
+            
+            hand_text = big_font.render("Show your hand to resume", True, WHITE)
+            hand_rect = hand_text.get_rect(center=(WIDTH//2, HEIGHT//2 + 50))
+            screen.blit(hand_text, hand_rect)
         
         # Level up notification (seamless transition)
         if level_up_notification_timer > 0:
-            # Calculate fade based on timer
-            if level_up_notification_timer > 150:  # First 0.5s - fade in
-                alpha = int(255 * ((180 - level_up_notification_timer) / 30))
-            elif level_up_notification_timer < 30:  # Last 0.5s - fade out
+            if level_up_notification_timer > 90:
+                alpha = int(255 * ((120 - level_up_notification_timer) / 30))
+            elif level_up_notification_timer < 30:
                 alpha = int(255 * (level_up_notification_timer / 30))
-            else:  # Middle - full opacity
+            else:
                 alpha = 255
             
             level_color = LEVELS[level_up_notification_level]["color"]
             
-            # "LEVEL 2" text
-            level_text = title_font.render(f"LEVEL {level_up_notification_level}", True, level_color)
+            level_text = title_font.render(f"WAVE {level_up_notification_level}", True, level_color)
             level_text.set_alpha(alpha)
             level_rect = level_text.get_rect(center=(WIDTH//2, HEIGHT//2))
             
-            # Glow effect
             for i in range(3):
-                glow = title_font.render(f"LEVEL {level_up_notification_level}", True, level_color)
+                glow = title_font.render(f"WAVE {level_up_notification_level}", True, level_color)
                 glow.set_alpha(max(0, alpha - 100 - i*30))
                 glow_rect = glow.get_rect(center=(WIDTH//2 + i*2, HEIGHT//2 + i*2))
                 screen.blit(glow, glow_rect)
             
             screen.blit(level_text, level_rect)
         
-        # Level complete screen
-        if game_over and win:
-            draw_level_complete(current_level, score)
+        # Game over screen
+        if game_over:
+            overlay = pygame.Surface((WIDTH, HEIGHT))
+            overlay.set_alpha(230)
+            overlay.fill(DARK_BG)
+            screen.blit(overlay, (0, 0))
+            
+            if win:
+                result_text = title_font.render("VICTORY!", True, GOLD)
+                result_color = GOLD
+            else:
+                result_text = title_font.render("GAME OVER", True, RED)
+                result_color = RED
+            
+            for i in range(3):
+                glow = title_font.render("VICTORY!" if win else "GAME OVER", True, result_color)
+                glow.set_alpha(100 - i*30)
+                glow_rect = glow.get_rect(center=(WIDTH//2 + i*3, HEIGHT//4 + i*3))
+                screen.blit(glow, glow_rect)
+            
+            result_rect = result_text.get_rect(center=(WIDTH//2, HEIGHT//4))
+            screen.blit(result_text, result_rect)
+            
+            final_score_surf = big_font.render(f"Final Score: {total_score}", True, WHITE)
+            final_score_rect = final_score_surf.get_rect(center=(WIDTH//2, HEIGHT//2))
+            screen.blit(final_score_surf, final_score_rect)
+            
+            dodged_surf = medium_font.render(f"Threats Dodged: {threats_dodged}", True, CYAN)
+            dodged_rect = dodged_surf.get_rect(center=(WIDTH//2, HEIGHT//2 + 80))
+            screen.blit(dodged_surf, dodged_rect)
+            
+            pulse = abs(math.sin(current_time * 2)) * 0.3 + 0.7
+            restart_color = tuple(int(c * pulse) for c in UI_ACCENT)
+            
+            if restart_cooldown > 0:
+                # Show cooldown timer
+                cooldown_text = f"Wait {int(restart_cooldown)}s..."
+                restart_surf = medium_font.render(cooldown_text, True, (150, 150, 150))
+            else:
+                # Ready to restart
+                restart_surf = medium_font.render("👊 CLOSE FIST TO RESTART", True, restart_color)
+            
+            restart_rect = restart_surf.get_rect(center=(WIDTH//2, HEIGHT - 150))
+            screen.blit(restart_surf, restart_rect)
         
         pygame.display.flip()
 
@@ -1171,6 +1298,8 @@ except KeyboardInterrupt:
     pass
 except Exception as e:
     print(f"Error: {e}")
+    import traceback
+    traceback.print_exc()
 finally:
     cap.release()
     pygame.quit()
