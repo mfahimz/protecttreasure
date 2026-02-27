@@ -519,11 +519,8 @@ def spawn_threat(threat_type, chest_position=None):
     level_config = LEVELS[current_level]
     threat_config = THREAT_TYPES[threat_type]
     
-    # Rocket from LEFT, Nuke from RIGHT
-    if threat_type == "rocket":
-        start_x = -100  # LEFT SIDE
-        start_y = random.randint(100, HEIGHT - 100)
-    elif threat_type == "nuke":
+    # Rocket and Nuke from RIGHT side ONLY
+    if threat_type in ["rocket", "nuke"]:
         start_x = WIDTH + 100  # RIGHT SIDE
         start_y = random.randint(100, HEIGHT - 100)
     else:
@@ -564,7 +561,11 @@ def spawn_threat(threat_type, chest_position=None):
     direction = direction / np.linalg.norm(direction)
     
     # Calculate angle to point towards target (for rockets/nukes)
-    angle_to_target = math.degrees(math.atan2(direction[1], direction[0]))
+    # BUT: Don't rotate rockets and nukes - keep them as-is
+    if threat_type in ["rocket", "nuke"]:
+        angle_to_target = 0  # No rotation for rockets/nukes
+    else:
+        angle_to_target = math.degrees(math.atan2(direction[1], direction[0]))
     
     speed_range = level_config["threat_speed"]
     base_speed = random.uniform(speed_range[0], speed_range[1])
