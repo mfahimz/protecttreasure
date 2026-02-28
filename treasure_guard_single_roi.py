@@ -140,9 +140,9 @@ LEVELS = {
     1: {
         "name": "WAVE 1",
         "duration": 15,
-        "max_threats": 5,
-        "spawn_rate": 0.04,
-        "threat_speed": (4.0, 5.0),
+        "max_threats": 3,  # Reduced from 5 (30% reduction)
+        "spawn_rate": 0.028,  # Reduced from 0.04 (30% reduction)
+        "threat_speed": (2.8, 3.5),  # Reduced from (4.0, 5.0) (30% reduction)
         "allowed_threats": ["threat"],
         "threat_intervals": {
             "threat": 0.5,
@@ -154,9 +154,9 @@ LEVELS = {
     2: {
         "name": "WAVE 2",
         "duration": 15,
-        "max_threats": 7,
-        "spawn_rate": 0.06,
-        "threat_speed": (5.0, 6.5),
+        "max_threats": 5,  # Reduced from 7 (30% reduction)
+        "spawn_rate": 0.042,  # Reduced from 0.06 (30% reduction)
+        "threat_speed": (3.5, 4.55),  # Reduced from (5.0, 6.5) (30% reduction)
         "allowed_threats": ["threat", "rocket"],
         "threat_intervals": {
             "threat": 0.8,
@@ -169,9 +169,9 @@ LEVELS = {
     3: {
         "name": "WAVE 3",
         "duration": 15,
-        "max_threats": 10,
-        "spawn_rate": 0.08,
-        "threat_speed": (6.0, 8.0),
+        "max_threats": 7,  # Reduced from 10 (30% reduction)
+        "spawn_rate": 0.056,  # Reduced from 0.08 (30% reduction)
+        "threat_speed": (4.2, 5.6),  # Reduced from (6.0, 8.0) (30% reduction)
         "allowed_threats": ["threat", "rocket", "grenade"],
         "threat_intervals": {
             "threat": 0.7,
@@ -185,9 +185,9 @@ LEVELS = {
     4: {
         "name": "FINAL WAVE",
         "duration": 15,
-        "max_threats": 15,
-        "spawn_rate": 0.12,
-        "threat_speed": (7.0, 10.0),
+        "max_threats": 10,  # Reduced from 15 (30% reduction)
+        "spawn_rate": 0.084,  # Reduced from 0.12 (30% reduction)
+        "threat_speed": (4.9, 7.0),  # Reduced from (7.0, 10.0) (30% reduction)
         "allowed_threats": ["threat", "rocket", "grenade", "nuke"],
         "threat_intervals": {
             "threat": 0.6,
